@@ -28,9 +28,8 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We aim to fost
 1. **Fork and clone the repository**:
 
    ```bash
-   git clone https://github.com/harshhh28/hia.git
-   cd hia
-   git switch v2
+   git clone https://github.com/harshhh28/hia-js.git
+   cd hia-js
    ```
 
 2. **Install dependencies**:
@@ -49,7 +48,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We aim to fost
    Create `.env` in backend directory:
 
    ```env
-   PORT=5000
+   PORT=your-backend-port
    JWT_SECRET=your-jwt-secret
    ```
 
@@ -75,7 +74,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We aim to fost
 
 ### Branching Strategy
 
-- `v2`: Production-ready code
+- `main`: Production-ready code
 - `feature/*`: New features
 - `fix/*`: Bug fixes
 - `docs/*`: Documentation updates
