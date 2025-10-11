@@ -126,8 +126,7 @@ export class User {
   }
 
   static async getAll() {
-    const query =
-      "SELECT id, email, provider, name, created_at FROM users ORDER BY created_at DESC";
+    const query = "SELECT * FROM users ORDER BY created_at DESC";
 
     try {
       const result = await pool.query(query);

@@ -12,7 +12,7 @@ export const getAuthHeaders = async () => {
   const session = await getSession();
   return {
     headers: {
-      Authorization: session ? `Bearer ${session.accessToken}` : "",
+      Authorization: session ? `Bearer ${session.token}` : "",
     },
   };
 };

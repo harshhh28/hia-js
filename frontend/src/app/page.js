@@ -2,32 +2,33 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import Loading from "./components/Loading";
 
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return; // Still loading
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    if (status === "loading") return;
     if (!session) {
       router.push("/auth");
+      return;
     }
-  }, [session, status, router]);
+  }, [session, status, router, isClient]);
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+  if (!isClient || status === "loading") {
+    return <Loading />;
   }
 
   if (!session) {
-    return null; // Will redirect to auth page
+    return <Loading />;
   }
 
   return (

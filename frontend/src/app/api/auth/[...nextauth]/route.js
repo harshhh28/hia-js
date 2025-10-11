@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
+import axios from "axios";
 
 const authOptions = {
   providers: [
@@ -24,58 +25,65 @@ const authOptions = {
       async authorize(credentials) {
         try {
           const { email, password, name, isSignup } = credentials;
+          console.log("Auth attempt:", { email, isSignup });
 
           if (isSignup === "true") {
             // Handle signup
-            const response = await fetch(
+            const response = await axios.post(
               `${process.env.BACKEND_URL}/api/users/signup`,
               {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email, password, name }),
+                email,
+                password,
+                name,
               }
             );
 
-            const data = await response.json();
+            const data = response.data.data;
+            console.log("Signup response:", response.data);
 
-            if (data.success) {
+            if (response.data.status === "success") {
+              console.log("Signup successful, returning user:", data.user);
               return {
-                id: data.data.user.id.toString(),
-                email: data.data.user.email,
-                name: data.data.user.name,
-                token: data.data.token,
+                id: data.user.id.toString(),
+                email: data.user.email,
+                name: data.user.name,
+                token: data.token,
               };
+            } else {
+              console.log("Signup failed:", response.data);
             }
           } else {
             // Handle login
-            const response = await fetch(
+            const response = await axios.post(
               `${process.env.BACKEND_URL}/api/users/login`,
               {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email, password }),
+                email,
+                password,
               }
             );
 
-            const data = await response.json();
+            const data = response.data.data;
+            console.log("Login response:", response.data);
 
-            if (data.success) {
+            if (response.data.status === "success") {
+              console.log("Login successful, returning user:", data.user);
               return {
-                id: data.data.user.id.toString(),
-                email: data.data.user.email,
-                name: data.data.user.name,
-                token: data.data.token,
+                id: data.user.id.toString(),
+                email: data.user.email,
+                name: data.user.name,
+                token: data.token,
               };
+            } else {
+              console.log("Login failed:", response.data);
             }
           }
 
+          console.log("Auth failed - returning null");
           return null;
         } catch (error) {
           console.error("Auth error:", error);
+          console.error("Error response:", error.response?.data);
+          console.error("Error status:", error.response?.status);
           return null;
         }
       },
@@ -86,27 +94,21 @@ const authOptions = {
       if (account?.provider === "google" || account?.provider === "github") {
         try {
           // Create or find user in our database
-          const response = await fetch(
+          const response = await axios.post(
             `${process.env.BACKEND_URL}/api/users/oauth`,
             {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                email: user.email,
-                provider: account.provider,
-                provider_id: account.providerAccountId,
-                name: user.name,
-              }),
+              email: user.email,
+              provider: account.provider,
+              provider_id: account.providerAccountId,
+              name: user.name,
             }
           );
 
-          const data = await response.json();
+          const data = await response.data.data;
 
-          if (data.success) {
-            user.id = data.data.user.id.toString();
-            user.token = data.data.token;
+          if (response.data.success) {
+            user.id = data.user.id.toString();
+            user.token = data.token;
             return true;
           }
         } catch (error) {
