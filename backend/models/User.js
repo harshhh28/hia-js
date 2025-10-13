@@ -3,8 +3,9 @@ import pool from "../config/database.js";
 export class User {
   static async createTable() {
     const query = `
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 email TEXT UNIQUE NOT NULL,
                 provider VARCHAR(20) CHECK (provider IN ('email', 'github', 'google')) NOT NULL,
                 provider_id TEXT,

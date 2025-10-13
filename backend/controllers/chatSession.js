@@ -1,0 +1,61 @@
+import ApiResponse from "../utils/ApiResponse.js";
+import { ChatSession } from "../models/ChatSession.js";
+import { User } from "../models/User.js";
+
+const handleCreateChatSession = async (req, res) => {
+  try {
+    if (!req.user) {
+      return ApiResponse.error(res, "User not found", 404);
+    }
+    const user_id = req.user.id;
+    const { title } = req.body;
+    const chatSession = await ChatSession.create({
+      user_id: user_id,
+      title: title, // title is optional - will be auto-generated if not provided
+    });
+    return ApiResponse.success(res, chatSession, "Chat session created", 201);
+  } catch (error) {
+    console.error("Create chat session error:", error);
+    return ApiResponse.serverError(res, "Internal server error");
+  }
+};
+
+const handleGetAllChatSessions = async (req, res) => {
+  try {
+    const chatSessions = await ChatSession.getAll();
+    if (!chatSessions) {
+      return ApiResponse.error(res, "No chat sessions found", 404);
+    }
+    return ApiResponse.success(res, chatSessions, "Chat sessions retrieved");
+  } catch (error) {
+    console.error("Get all chat sessions error:", error);
+    return ApiResponse.serverError(res, "Internal server error");
+  }
+};
+
+const handleGetChatSessionsByUserId = async (req, res) => {
+  try {
+    if (!req.user) {
+      return ApiResponse.error(res, "User not found", 404);
+    }
+    const user_id = req.user.id;
+    const chatSessions = await ChatSession.getByUserId(user_id);
+    if (!chatSessions) {
+      return ApiResponse.error(res, "No chat sessions found", 404);
+    }
+    return ApiResponse.success(
+      res,
+      chatSessions,
+      "User chat sessions retrieved"
+    );
+  } catch (error) {
+    console.error("Get chat sessions by user ID error:", error);
+    return ApiResponse.serverError(res, "Internal server error");
+  }
+};
+
+export {
+  handleCreateChatSession,
+  handleGetAllChatSessions,
+  handleGetChatSessionsByUserId,
+};

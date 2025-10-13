@@ -1,5 +1,5 @@
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Loading from "../Loading";
 
 export default function ProtectedRoute({ children }) {

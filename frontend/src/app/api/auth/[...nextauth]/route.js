@@ -1,8 +1,8 @@
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import GitHubProvider from "next-auth/providers/github";
-import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GitHubProvider from "next-auth/providers/github";
+import GoogleProvider from "next-auth/providers/google";
 
 const authOptions = {
   providers: [
@@ -30,12 +30,12 @@ const authOptions = {
           if (isSignup === "true") {
             // Handle signup
             const response = await axios.post(
-              `${process.env.BACKEND_URL}/api/users/signup`,
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/signup`,
               {
                 email,
                 password,
                 name,
-              }
+              },
             );
 
             const data = response.data.data;
@@ -47,7 +47,7 @@ const authOptions = {
                 id: data.user.id.toString(),
                 email: data.user.email,
                 name: data.user.name,
-                token: data.token,
+                accessToken: data.accessToken,
               };
             } else {
               console.log("Signup failed:", response.data);
@@ -55,11 +55,11 @@ const authOptions = {
           } else {
             // Handle login
             const response = await axios.post(
-              `${process.env.BACKEND_URL}/api/users/login`,
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/login`,
               {
                 email,
                 password,
-              }
+              },
             );
 
             const data = response.data.data;
@@ -71,7 +71,7 @@ const authOptions = {
                 id: data.user.id.toString(),
                 email: data.user.email,
                 name: data.user.name,
-                token: data.token,
+                accessToken: data.accessToken,
               };
             } else {
               console.log("Login failed:", response.data);
@@ -90,25 +90,25 @@ const authOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (account?.provider === "google" || account?.provider === "github") {
         try {
           // Create or find user in our database
           const response = await axios.post(
-            `${process.env.BACKEND_URL}/api/users/oauth`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/oauth`,
             {
               email: user.email,
               provider: account.provider,
               provider_id: account.providerAccountId,
               name: user.name,
-            }
+            },
           );
 
           const data = await response.data.data;
 
-          if (response.data.success) {
+          if (response.data.status === "success") {
             user.id = data.user.id.toString();
-            user.token = data.token;
+            user.accessToken = data.accessToken;
             return true;
           }
         } catch (error) {
@@ -118,17 +118,17 @@ const authOptions = {
 
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.token = user.token;
+        token.accessToken = user.accessToken;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
-        session.token = token.token;
+        session.accessToken = token.accessToken;
       }
       return session;
     },

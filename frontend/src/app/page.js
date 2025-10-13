@@ -1,14 +1,19 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useTokenRefresh } from "../hooks/useTokenRefresh";
+import { handleLogout } from "../utils/auth";
 import Loading from "./components/Loading";
 
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+
+  // Enable automatic token refresh
+  useTokenRefresh();
 
   useEffect(() => {
     setIsClient(true);
@@ -46,8 +51,10 @@ export default function Home() {
                 Welcome, {session.user.name}
               </span>
               <button
-                onClick={() => signOut({ callbackUrl: "/auth" })}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                type="button"
+                onClick={handleLogout}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
                 Sign out
               </button>
             </div>

@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import {} from "dotenv/config";
 import { User } from "../models/User.js";
+import { setCookie } from "../utils/setCookie.js";
+import { clearCookie } from "../utils/clearCookie.js";
+import { generateTokens } from "../utils/generateTokens.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -30,15 +33,9 @@ const handleUserSignup = async (req, res) => {
       provider_id: null,
     });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiration
-        data: { id: user.id, email: user.email, name: user.name },
-      },
-      JWT_SECRET,
-      { algorithm: "HS256" }
-    );
+    // Generate JWT tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+    setCookie(res, accessToken, refreshToken);
 
     return ApiResponse.success(
       res,
@@ -48,7 +45,7 @@ const handleUserSignup = async (req, res) => {
           email: user.email,
           name: user.name,
         },
-        token: token,
+        accessToken: accessToken,
       },
       "User signed up successfully"
     );
@@ -75,15 +72,9 @@ const handleUserLogin = async (req, res) => {
       return ApiResponse.error(res, "Invalid credentials", 401);
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiration
-        data: { id: user.id, email: user.email, name: user.name },
-      },
-      JWT_SECRET,
-      { algorithm: "HS256" }
-    );
+    // Generate JWT tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+    setCookie(res, accessToken, refreshToken);
 
     return ApiResponse.success(
       res,
@@ -93,7 +84,7 @@ const handleUserLogin = async (req, res) => {
           email: user.email,
           name: user.name,
         },
-        token: token,
+        accessToken: accessToken,
       },
       "User logged in successfully"
     );
@@ -132,15 +123,9 @@ const handleOAuthUser = async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiration
-        data: { id: user.id, email: user.email, name: user.name },
-      },
-      JWT_SECRET,
-      { algorithm: "HS256" }
-    );
+    // Generate JWT tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+    setCookie(res, accessToken, refreshToken);
 
     return ApiResponse.success(
       res,
@@ -151,7 +136,7 @@ const handleOAuthUser = async (req, res) => {
           name: user.name,
           provider: user.provider,
         },
-        token: token,
+        accessToken: accessToken,
       },
       "OAuth user authenticated successfully"
     );
@@ -162,9 +147,9 @@ const handleOAuthUser = async (req, res) => {
 };
 
 // Get user by ID
-const getUserById = async (req, res) => {
+const handleGetUserById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.user;
     const user = await User.findById(id);
 
     if (!user) {
@@ -191,7 +176,7 @@ const getUserById = async (req, res) => {
 };
 
 // Get all users
-const getAllUsers = async (req, res) => {
+const handleGetAllUsers = async (req, res) => {
   try {
     const users = await User.getAll();
     if (!users) {
@@ -204,14 +189,72 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// Delete user by ID
-const deleteUserById = async (req, res) => {
+// Refresh access token
+const handleRefreshToken = async (req, res) => {
   try {
-    const { id } = req.params;
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return ApiResponse.error(res, "Refresh token required", 401);
+    }
+
+    try {
+      const decoded = jwt.verify(refreshToken, JWT_SECRET);
+      const user = await User.findById(decoded.data.id);
+
+      if (!user) {
+        return ApiResponse.error(res, "User not found", 404);
+      }
+
+      // Generate new tokens
+      const { accessToken, refreshToken: newRefreshToken } =
+        generateTokens(user);
+      setCookie(res, accessToken, newRefreshToken);
+
+      return ApiResponse.success(
+        res,
+        {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          },
+          accessToken: accessToken,
+        },
+        "Token refreshed successfully"
+      );
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        return ApiResponse.error(res, "Refresh token expired", 401);
+      }
+      return ApiResponse.error(res, "Invalid refresh token", 401);
+    }
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    return ApiResponse.serverError(res, "Failed to refresh token");
+  }
+};
+
+// Logout user
+const handleLogout = async (req, res) => {
+  try {
+    clearCookie(res);
+    return ApiResponse.success(res, null, "Logged out successfully");
+  } catch (error) {
+    console.error("Logout error:", error);
+    return ApiResponse.serverError(res, "Failed to logout");
+  }
+};
+
+// Delete user by ID
+const handleDeleteUserById = async (req, res) => {
+  try {
+    const { id } = req.user;
     const user = await User.delete(id);
     if (!user) {
       return ApiResponse.error(res, "User not found", 404);
     }
+    clearCookie(res); // Clear cookies when user is deleted
     return ApiResponse.success(res, user, "User deleted successfully");
   } catch (error) {
     console.error("Delete user error:", error);
@@ -223,7 +266,9 @@ export {
   handleUserSignup,
   handleUserLogin,
   handleOAuthUser,
-  getUserById,
-  getAllUsers,
-  deleteUserById,
+  handleGetUserById,
+  handleGetAllUsers,
+  handleDeleteUserById,
+  handleRefreshToken,
+  handleLogout,
 };
