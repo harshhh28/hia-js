@@ -359,7 +359,7 @@ router.get("/", (req, res) => {
                     <p><strong>Hybrid Authentication:</strong> The API supports both Bearer tokens and HTTP-only cookies.</p>
                     <p><strong>Bearer Token:</strong> Include <code>Authorization: Bearer &lt;token&gt;</code> header</p>
                     <p><strong>Cookies:</strong> Refresh tokens are automatically sent via HTTP-only cookies</p>
-                    <p><strong>Priority:</strong> Bearer tokens are checked first, then cookies</p>
+                    <p><strong>Priority:</strong> Cookies are checked first, then Bearer tokens</p>
                 </div>
 
                 <div class="section">
@@ -596,11 +596,17 @@ Content-Type: application/json</div>
                             <span class="path">/api/users/logout</span>
                         </div>
                         <div class="description">Logout user and clear authentication cookies</div>
-                        <span class="auth-badge none">No Authentication Required</span>
+                        <span class="auth-badge optional">Authentication Optional</span>
 
                         <div class="subsection">
-                            <h4>Headers</h4>
-                            <div class="code-block">Content-Type: application/json</div>
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Cookies (Optional)</h4>
+                            <div class="code-block">accessToken: HTTP-only cookie with access token</div>
                         </div>
 
                         <div class="subsection">
@@ -609,8 +615,17 @@ Content-Type: application/json</div>
                         </div>
 
                         <div class="subsection">
+                            <h4>Validation</h4>
+                            <ul class="validation-list">
+                                <li>If user is authenticated, cookies will be cleared</li>
+                                <li>If no user found, returns 404 error</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
                             <h4>Status Codes</h4>
                             <span class="status-code success">200</span> Logout successful<br>
+                            <span class="status-code client-error">404</span> User not found<br>
                             <span class="status-code error">500</span> Internal server error
                         </div>
 
@@ -687,7 +702,7 @@ Content-Type: application/json</div>
                             <span class="method delete">DELETE</span>
                             <span class="path">/api/users/:id</span>
                         </div>
-                        <div class="description">Delete user account by ID</div>
+                        <div class="description">Delete user account by ID and clear authentication cookies</div>
                         <span class="auth-badge required">Authentication Required</span>
 
                         <div class="subsection">
@@ -707,6 +722,7 @@ Content-Type: application/json</div>
                                 <li>User ID must be valid UUID</li>
                                 <li>User must exist in database</li>
                                 <li>User can only delete their own account</li>
+                                <li>Authentication cookies are automatically cleared</li>
                             </ul>
                         </div>
 

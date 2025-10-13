@@ -24,7 +24,7 @@ router.post("/logout", handleLogout);
 router
   .route("/:id")
   .get(verifyUserToken, handleGetUserById)
-  .delete(verifyUserToken, handleDeleteUserById);
+  .delete(verifyAdminToken, handleDeleteUserById);
 
 // Admin-only routes
 router.get("/", verifyAdminToken, handleGetAllUsers);

@@ -243,6 +243,9 @@ const handleRefreshToken = async (req, res) => {
 
 // Logout user
 const handleLogout = async (req, res) => {
+  if (!req.user) {
+    return ApiResponse.error(res, "User not found", 404);
+  }
   try {
     clearCookie(res);
     return ApiResponse.success(res, null, "Logged out successfully");
@@ -255,8 +258,8 @@ const handleLogout = async (req, res) => {
 // Delete user by ID
 const handleDeleteUserById = async (req, res) => {
   try {
-    const { id } = req.user;
-    const user = await User.delete(id);
+    const { id } = req.params;
+    const user = await User.delete(parseInt(id));
     if (!user) {
       return ApiResponse.error(res, "User not found", 404);
     }

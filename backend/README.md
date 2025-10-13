@@ -85,35 +85,7 @@ backend/
 
 ## API Endpoints
 
-### Authentication Routes (`/api/users`)
-
-| Method | Endpoint   | Description               | Auth Required | Token Support   |
-| ------ | ---------- | ------------------------- | ------------- | --------------- |
-| POST   | `/signup`  | User registration         | No            | -               |
-| POST   | `/login`   | User login                | No            | -               |
-| POST   | `/oauth`   | OAuth user creation/login | No            | -               |
-| POST   | `/refresh` | Refresh access token      | No (cookie)   | Bearer + Cookie |
-| POST   | `/logout`  | User logout               | No            | -               |
-| GET    | `/:id`     | Get user by ID            | Yes           | Bearer + Cookie |
-| DELETE | `/:id`     | Delete user account       | Yes           | Bearer + Cookie |
-| GET    | `/`        | Get all users             | Admin         | Bearer + Cookie |
-
-### Chat Session Routes (`/api/chat-sessions`)
-
-| Method | Endpoint  | Description              | Auth Required | Token Support   |
-| ------ | --------- | ------------------------ | ------------- | --------------- |
-| POST   | `/create` | Create chat session      | Yes           | Bearer + Cookie |
-| GET    | `/user`   | Get user's chat sessions | Yes           | Bearer + Cookie |
-| DELETE | `/:id`    | Delete chat session      | Yes           | Bearer + Cookie |
-| GET    | `/`       | Get all chat sessions    | Admin         | Bearer + Cookie |
-
-### Chat Message Routes (`/api/chat-messages`)
-
-| Method | Endpoint               | Description             | Auth Required | Token Support   |
-| ------ | ---------------------- | ----------------------- | ------------- | --------------- |
-| POST   | `/create`              | Create chat message     | Yes           | Bearer + Cookie |
-| GET    | `/session/:session_id` | Get messages by session | Yes           | Bearer + Cookie |
-| GET    | `/`                    | Get all messages        | Admin         | Bearer + Cookie |
+Visit http://localhost:5000/api/docs for detailed info.
 
 ## Database Schema
 
