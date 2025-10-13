@@ -86,13 +86,32 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isSignup ? "Create your account" : "Sign in to your account"}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6 lg:space-y-8">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 lg:h-16 lg:w-16 bg-gradient-to-r from-[#ff4b4b] to-[#e63946] rounded-full flex items-center justify-center mb-4 lg:mb-6">
+            <svg
+              className="h-6 w-6 lg:h-8 lg:w-8 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl lg:text-3xl font-extrabold text-white">
+            {isSignup ? "Create your account" : "Welcome back"}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-300">
+            {isSignup
+              ? "Join Health Insights Agent"
+              : "Sign in to your account"}
+          </p>
+          <p className="mt-1 text-sm text-gray-400">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               type="button"
@@ -100,20 +119,20 @@ export default function AuthPage() {
                 setIsSignup(!isSignup);
                 setError("");
               }}
-              className="font-medium text-indigo-600 hover:text-indigo-500">
+              className="font-medium text-[#ff4b4b] hover:text-[#e63946] transition-colors">
               {isSignup ? "Sign in" : "Sign up"}
             </button>
           </p>
         </div>
 
-        <div className="mt-8 space-y-6">
+        <div className="mt-6 lg:mt-8 space-y-4 lg:space-y-6">
           {/* OAuth Buttons */}
           <div className="space-y-3">
             <button
               type="button"
               onClick={() => handleOAuthSignIn("google")}
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+              className="group relative w-full flex justify-center py-3 px-4 border border-gray-600 text-sm font-medium rounded-xl text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff4b4b] disabled:opacity-50 transition-all duration-200 hover:border-[#ff4b4b]">
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                 <svg
                   className="h-5 w-5"
@@ -145,7 +164,7 @@ export default function AuthPage() {
               type="button"
               onClick={() => handleOAuthSignIn("github")}
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+              className="group relative w-full flex justify-center py-3 px-4 border border-gray-600 text-sm font-medium rounded-xl text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff4b4b] disabled:opacity-50 transition-all duration-200 hover:border-[#ff4b4b]">
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                 <svg
                   className="h-5 w-5"
@@ -166,22 +185,26 @@ export default function AuthPage() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-gray-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">
+              <span className="px-2 bg-gray-900 text-gray-400">
                 Or continue with email
               </span>
             </div>
           </div>
 
           {/* Email/Password Form */}
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="rounded-md shadow-sm -space-y-px">
+          <form
+            className="mt-6 lg:mt-8 space-y-4 lg:space-y-6"
+            onSubmit={handleSubmit}>
+            <div className="rounded-xl shadow-sm -space-y-px bg-gray-800 p-4 lg:p-6 border border-gray-700">
               {isSignup && (
-                <div>
-                  <label htmlFor="name" className="sr-only">
-                    Name
+                <div className="mb-4">
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-medium text-gray-300 mb-2">
+                    Full Name
                   </label>
                   <input
                     id="name"
@@ -190,14 +213,16 @@ export default function AuthPage() {
                     required={isSignup}
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                    placeholder="Full name"
+                    className="appearance-none relative block w-full px-3 lg:px-4 py-2 lg:py-3 border border-gray-600 placeholder-gray-400 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4b4b] focus:border-transparent transition-all duration-200 text-sm lg:text-base"
+                    placeholder="Enter your full name"
                   />
                 </div>
               )}
-              <div>
-                <label htmlFor="email" className="sr-only">
-                  Email address
+              <div className="mb-4">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-300 mb-2">
+                  Email Address
                 </label>
                 <input
                   id="email"
@@ -207,14 +232,14 @@ export default function AuthPage() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
-                    isSignup ? "" : "rounded-t-md"
-                  } focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                  placeholder="Email address"
+                  className="appearance-none relative block w-full px-3 lg:px-4 py-2 lg:py-3 border border-gray-600 placeholder-gray-400 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4b4b] focus:border-transparent transition-all duration-200 text-sm lg:text-base"
+                  placeholder="Enter your email"
                 />
               </div>
               <div>
-                <label htmlFor="password" className="sr-only">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-300 mb-2">
                   Password
                 </label>
                 <input
@@ -225,22 +250,60 @@ export default function AuthPage() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
+                  className="appearance-none relative block w-full px-3 lg:px-4 py-2 lg:py-3 border border-gray-600 placeholder-gray-400 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4b4b] focus:border-transparent transition-all duration-200 text-sm lg:text-base"
+                  placeholder="Enter your password"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="text-red-600 text-sm text-center">{error}</div>
+              <div className="text-[#ff4b4b] text-sm text-center bg-red-900/20 border border-red-500/30 rounded-lg py-2 px-4">
+                {error}
+              </div>
             )}
 
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-                {loading ? "Please wait..." : isSignup ? "Sign up" : "Sign in"}
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-[#ff4b4b] to-[#e63946] hover:from-[#e63946] hover:to-[#d63031] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff4b4b] disabled:opacity-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                {loading ? (
+                  <div className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Please wait...
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                      />
+                    </svg>
+                    {isSignup ? "Create Account" : "Sign In"}
+                  </div>
+                )}
               </button>
             </div>
           </form>
