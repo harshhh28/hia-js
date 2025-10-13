@@ -54,8 +54,39 @@ const handleGetChatSessionsByUserId = async (req, res) => {
   }
 };
 
+const handleDeleteChatSession = async (req, res) => {
+  try {
+    if (!req.user) {
+      return ApiResponse.error(res, "User not found", 404);
+    }
+    const user_id = req.user.id;
+    const { id } = req.params;
+
+    const chatSession = await ChatSession.findById(id);
+    if (!chatSession) {
+      return ApiResponse.error(res, "Chat session not found", 404);
+    }
+
+    // Check if the session belongs to the user
+    if (chatSession.user_id !== user_id) {
+      return ApiResponse.error(res, "Unauthorized to delete this session", 403);
+    }
+
+    const deletedSession = await ChatSession.delete(id);
+    return ApiResponse.success(
+      res,
+      deletedSession,
+      "Chat session deleted successfully"
+    );
+  } catch (error) {
+    console.error("Delete chat session error:", error);
+    return ApiResponse.serverError(res, "Internal server error");
+  }
+};
+
 export {
   handleCreateChatSession,
   handleGetAllChatSessions,
   handleGetChatSessionsByUserId,
+  handleDeleteChatSession,
 };

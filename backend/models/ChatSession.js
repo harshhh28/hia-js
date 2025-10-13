@@ -83,4 +83,15 @@ export class ChatSession {
       throw error;
     }
   }
+
+  static async delete(id) {
+    const query = "DELETE FROM chat_sessions WHERE id = $1 RETURNING *";
+    try {
+      const result = await pool.query(query, [id]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error deleting chat session", error);
+      throw error;
+    }
+  }
 }

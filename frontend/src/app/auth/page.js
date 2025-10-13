@@ -28,22 +28,45 @@ export default function AuthPage() {
     setError("");
 
     try {
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        isSignup: isSignup.toString(),
-        redirect: false,
-      });
+      // Make direct API call to backend for authentication
+      const endpoint = isSignup ? "/api/users/signup" : "/api/users/login";
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
+        }${endpoint}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // This ensures cookies are set
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            name: formData.name,
+          }),
+        }
+      );
 
-      if (result?.error) {
-        setError("Invalid credentials or user already exists");
-      } else {
-        // Check if session was created successfully
-        const session = await getSession();
-        if (session) {
+      const data = await response.json();
+
+      if (response.ok && data.status === "success") {
+        // Authentication successful, now sign in with NextAuth
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          isSignup: isSignup.toString(),
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError("Session creation failed");
+        } else {
           router.push("/");
         }
+      } else {
+        setError(data.message || "Invalid credentials or user already exists");
       }
     } catch (_error) {
       setError("An error occurred. Please try again.");
@@ -77,8 +100,7 @@ export default function AuthPage() {
                 setIsSignup(!isSignup);
                 setError("");
               }}
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
+              className="font-medium text-indigo-600 hover:text-indigo-500">
               {isSignup ? "Sign in" : "Sign up"}
             </button>
           </p>
@@ -91,14 +113,12 @@ export default function AuthPage() {
               type="button"
               onClick={() => handleOAuthSignIn("google")}
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
+              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                 <svg
                   className="h-5 w-5"
                   viewBox="0 0 24 24"
-                  aria-label="Google logo"
-                >
+                  aria-label="Google logo">
                   <title>Google logo</title>
                   <path
                     fill="#4285F4"
@@ -125,15 +145,13 @@ export default function AuthPage() {
               type="button"
               onClick={() => handleOAuthSignIn("github")}
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
+              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                 <svg
                   className="h-5 w-5"
                   fill="currentColor"
                   viewBox="0 0 20 20"
-                  aria-label="GitHub logo"
-                >
+                  aria-label="GitHub logo">
                   <title>GitHub logo</title>
                   <path
                     fillRule="evenodd"
@@ -221,8 +239,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
                 {loading ? "Please wait..." : isSignup ? "Sign up" : "Sign in"}
               </button>
             </div>

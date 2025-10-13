@@ -19,23 +19,20 @@ export const useTokenRefresh = () => {
 
         // If token expires within 5 minutes, refresh it
         if (timeUntilExpiry < 300) {
-          console.log("Token expiring soon, refreshing...");
           const refreshResult = await refreshAccessToken();
 
           if (refreshResult.success) {
             // Update the session with new token
             await update({
-              ...session,
-              accessToken: refreshResult.accessToken,
+              user: {
+                ...session.user,
+                ...refreshResult.user,
+              },
             });
-            console.log("Token refreshed successfully");
-          } else {
-            console.error("Token refresh failed:", refreshResult.error);
-            // Could redirect to login here if needed
           }
         }
       } catch (error) {
-        console.error("Token refresh check error:", error);
+        // Token refresh check error - could log to monitoring service
       }
     };
 
@@ -50,7 +47,7 @@ export const useTokenRefresh = () => {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [session?.accessToken, update, session]);
+  }, [session?.accessToken, update]);
 
   return {
     isRefreshing: false, // Could add state for this if needed

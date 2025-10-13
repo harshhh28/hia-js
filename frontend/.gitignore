@@ -42,3 +42,6 @@ next-env.d.ts
 
 # streamlit secrets
 .streamlit/secrets.toml
+
+# do not track
+!.env.example

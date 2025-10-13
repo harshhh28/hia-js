@@ -45,7 +45,6 @@ const handleUserSignup = async (req, res) => {
           email: user.email,
           name: user.name,
         },
-        accessToken: accessToken,
       },
       "User signed up successfully"
     );
@@ -84,7 +83,6 @@ const handleUserLogin = async (req, res) => {
           email: user.email,
           name: user.name,
         },
-        accessToken: accessToken,
       },
       "User logged in successfully"
     );
@@ -136,7 +134,6 @@ const handleOAuthUser = async (req, res) => {
           name: user.name,
           provider: user.provider,
         },
-        accessToken: accessToken,
       },
       "OAuth user authenticated successfully"
     );

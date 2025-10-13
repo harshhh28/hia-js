@@ -42,33 +42,43 @@ frontend/
 
 ## Key Features
 
-### 1. **Authentication System**
+### 1. **Chat Application**
+
+- **Real-time Chat Interface**: Modern chat UI with sidebar and message area
+- **Session Management**: Create, view, and delete chat sessions
+- **Message History**: Persistent message storage and retrieval
+- **AI Integration Ready**: Prepared for AI service integration
+- **Responsive Design**: Mobile-friendly chat interface
+
+### 2. **Authentication System**
 
 - **NextAuth Integration**: Seamless OAuth and email/password authentication
 - **Dual Token System**: Access tokens (1 hour) + Refresh tokens (7 days)
 - **Automatic Token Refresh**: Background token renewal before expiration
 - **Multi-Provider Support**: Google, GitHub, and email/password authentication
 
-### 2. **Security Features**
+### 3. **Security Features**
 
 - **HTTP-Only Cookies**: Refresh tokens stored securely
 - **CSRF Protection**: SameSite cookie attributes
 - **Environment-Aware Security**: Secure flags enabled in production
 - **Automatic Cleanup**: Tokens cleared on logout and user deletion
 
-### 3. **API Integration**
+### 4. **API Integration**
 
 - **Cookie-based Authentication**: Secure HTTP-only cookie authentication
 - **Automatic Retry Logic**: Failed requests retried after token refresh
 - **Error Handling**: Comprehensive error handling for auth failures
 - **Request Interceptors**: Automatic token attachment and refresh
+- **Chat API Integration**: Full CRUD operations for sessions and messages
 
-### 4. **User Experience**
+### 5. **User Experience**
 
 - **Responsive Design**: Mobile-first Tailwind CSS design
 - **Loading States**: Smooth loading indicators
 - **Protected Routes**: Automatic redirect to login for unauthenticated users
 - **Session Management**: Persistent user sessions with automatic refresh
+- **Modern UI**: Clean, intuitive chat interface with animations
 
 ## Core Components
 
@@ -81,11 +91,19 @@ frontend/
 
 ### UI Components
 
-- `src/app/page.js` - Main dashboard with user information
+- `src/app/page.js` - Main chat application interface
+- `src/app/components/ChatApp.jsx` - Main chat component with sidebar and message area
 - `src/app/auth/page.js` - Login/signup forms
 - `src/app/components/auth/AuthProvider.jsx` - Authentication context provider
 - `src/app/components/auth/ProtectedRoute.jsx` - Route protection wrapper
 - `src/app/components/Loading.jsx` - Loading spinner component
+
+### API Integration
+
+- `src/utils/api.js` - Base API client with automatic token refresh
+- `src/utils/chatApi.js` - Chat-specific API functions for sessions and messages
+- `src/utils/auth.js` - Authentication utilities and session management
+- `src/hooks/useTokenRefresh.js` - Custom hook for automatic token refresh
 
 ### Layout & Styling
 
@@ -169,13 +187,23 @@ frontend/
 
 ## Backend Integration
 
-The frontend seamlessly integrates with the backend's authentication system:
+The frontend seamlessly integrates with the backend's authentication and chat systems:
+
+### Authentication Integration
 
 - **Login/Signup**: Creates both access and refresh tokens
 - **OAuth**: Handles Google/GitHub authentication with token generation
 - **Token Refresh**: Automatically refreshes expired access tokens
 - **Logout**: Clears all authentication cookies on backend
 - **API Calls**: Uses cookie-based authentication for all requests
+
+### Chat System Integration
+
+- **Session Management**: Full CRUD operations for chat sessions
+- **Message Handling**: Create and retrieve messages for each session
+- **User Isolation**: Users can only access their own sessions and messages
+- **Real-time Updates**: Messages persist and load when switching sessions
+- **Error Handling**: Graceful handling of API failures with user feedback
 
 ## Error Handling
 

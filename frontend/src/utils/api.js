@@ -23,7 +23,6 @@ export const refreshAccessToken = async () => {
 
     return { success: false, error: "Token refresh failed" };
   } catch (error) {
-    console.error("Token refresh error:", error);
     return {
       success: false,
       error: error.response?.data?.message || "Token refresh failed",
@@ -34,12 +33,8 @@ export const refreshAccessToken = async () => {
 export const logoutUser = async () => {
   try {
     const response = await apiClient.post("/api/users/logout");
-    console.log("Logout response:", response.data);
     return { success: true };
   } catch (error) {
-    console.error("Logout error:", error);
-    console.error("Error response:", error.response?.data);
-    console.error("Error status:", error.response?.status);
     return {
       success: false,
       error: error.response?.data?.message || "Logout failed",
