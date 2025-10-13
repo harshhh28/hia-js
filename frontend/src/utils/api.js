@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getSession } from "next-auth/react";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
@@ -9,9 +10,31 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
+// Add request interceptor to include access token from NextAuth session
+apiClient.interceptors.request.use(async (config) => {
+  const session = await getSession();
+  if (session?.accessToken) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
+  }
+  return config;
+});
+
 export const refreshAccessToken = async () => {
   try {
-    const response = await apiClient.post("/api/users/refresh");
+    const session = await getSession();
+    if (!session?.refreshToken) {
+      return { success: false, error: "No refresh token available" };
+    }
+
+    const response = await apiClient.post(
+      "/api/users/refresh",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${session.refreshToken}`,
+        },
+      }
+    );
 
     if (response.data.status === "success") {
       return {
@@ -49,18 +72,17 @@ export const apiCall = async (config, retryCount = 0) => {
   } catch (error) {
     // If access token expired and we haven't retried yet
     if (error.response?.status === 401 && retryCount === 0) {
-      const refreshResult = await refreshAccessToken();
+      // NextAuth will handle token refresh automatically
+      // Just retry the request once
+      return apiCall(config, retryCount + 1);
+    }
 
-      if (refreshResult.success) {
-        // Retry the original request
-        return apiCall(config, retryCount + 1);
-      } else {
-        // Refresh failed, redirect to login
-        if (typeof window !== "undefined") {
-          window.location.href = "/auth";
-        }
-        throw new Error("Authentication failed");
+    // If still getting 401 after retry, redirect to login
+    if (error.response?.status === 401 && retryCount > 0) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth";
       }
+      throw new Error("Authentication failed");
     }
 
     throw error;

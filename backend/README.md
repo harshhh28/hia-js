@@ -53,11 +53,13 @@ backend/
 
 ### 1. **Authentication System**
 
-- **JWT Tokens**: Access tokens (1 hour) + Refresh tokens (7 days)
+- **JWT Tokens**: Access tokens (15 minutes) + Refresh tokens (7 days)
 - **Multi-Provider Support**: Email/password, Google OAuth, GitHub OAuth
+- **Hybrid Authentication**: Supports both Bearer tokens and HTTP-only cookies
 - **Secure Cookies**: HTTP-only refresh tokens with SameSite protection
-- **Token Refresh**: Automatic token renewal endpoint
+- **Token Refresh**: Automatic token renewal endpoint with Bearer token support
 - **Password Security**: bcrypt hashing with salt rounds
+- **OAuth Integration**: Seamless backend token generation for OAuth users
 
 ### 2. **User Management**
 
@@ -85,32 +87,33 @@ backend/
 
 ### Authentication Routes (`/api/users`)
 
-| Method | Endpoint   | Description               | Auth Required |
-| ------ | ---------- | ------------------------- | ------------- |
-| POST   | `/signup`  | User registration         | No            |
-| POST   | `/login`   | User login                | No            |
-| POST   | `/oauth`   | OAuth user creation/login | No            |
-| POST   | `/refresh` | Refresh access token      | No (cookie)   |
-| POST   | `/logout`  | User logout               | No            |
-| GET    | `/:id`     | Get user by ID            | Yes           |
-| DELETE | `/:id`     | Delete user account       | Yes           |
-| GET    | `/`        | Get all users             | Admin         |
+| Method | Endpoint   | Description               | Auth Required | Token Support   |
+| ------ | ---------- | ------------------------- | ------------- | --------------- |
+| POST   | `/signup`  | User registration         | No            | -               |
+| POST   | `/login`   | User login                | No            | -               |
+| POST   | `/oauth`   | OAuth user creation/login | No            | -               |
+| POST   | `/refresh` | Refresh access token      | No (cookie)   | Bearer + Cookie |
+| POST   | `/logout`  | User logout               | No            | -               |
+| GET    | `/:id`     | Get user by ID            | Yes           | Bearer + Cookie |
+| DELETE | `/:id`     | Delete user account       | Yes           | Bearer + Cookie |
+| GET    | `/`        | Get all users             | Admin         | Bearer + Cookie |
 
 ### Chat Session Routes (`/api/chat-sessions`)
 
-| Method | Endpoint         | Description              | Auth Required |
-| ------ | ---------------- | ------------------------ | ------------- |
-| POST   | `/`              | Create chat session      | Yes           |
-| GET    | `/`              | Get all chat sessions    | Admin         |
-| GET    | `/user/:user_id` | Get user's chat sessions | Yes           |
+| Method | Endpoint  | Description              | Auth Required | Token Support   |
+| ------ | --------- | ------------------------ | ------------- | --------------- |
+| POST   | `/create` | Create chat session      | Yes           | Bearer + Cookie |
+| GET    | `/user`   | Get user's chat sessions | Yes           | Bearer + Cookie |
+| DELETE | `/:id`    | Delete chat session      | Yes           | Bearer + Cookie |
+| GET    | `/`       | Get all chat sessions    | Admin         | Bearer + Cookie |
 
 ### Chat Message Routes (`/api/chat-messages`)
 
-| Method | Endpoint               | Description             | Auth Required |
-| ------ | ---------------------- | ----------------------- | ------------- |
-| POST   | `/`                    | Create chat message     | Yes           |
-| GET    | `/session/:session_id` | Get messages by session | Yes           |
-| GET    | `/`                    | Get all messages        | Admin         |
+| Method | Endpoint               | Description             | Auth Required | Token Support   |
+| ------ | ---------------------- | ----------------------- | ------------- | --------------- |
+| POST   | `/create`              | Create chat message     | Yes           | Bearer + Cookie |
+| GET    | `/session/:session_id` | Get messages by session | Yes           | Bearer + Cookie |
+| GET    | `/`                    | Get all messages        | Admin         | Bearer + Cookie |
 
 ## Database Schema
 
@@ -285,24 +288,66 @@ npm run dev
 
 ```javascript
 // POST /api/users/refresh
-// Uses refresh token from HTTP-only cookie
+// Supports both Bearer token and HTTP-only cookie
+
+// Using Bearer token
+// Headers: Authorization: Bearer <refresh_token>
+
+// Using HTTP-only cookie (automatic)
+// Cookie: refreshToken=<refresh_token>
 
 // Response
 {
   "status": "success",
   "data": {
     "user": { "id": "uuid", "email": "user@example.com", "name": "John Doe" },
-    "accessToken": "new_jwt_token"
+    "accessToken": "new_jwt_token",
+    "refreshToken": "new_refresh_token"
   },
   "message": "Token refreshed successfully"
 }
 ```
 
-### 3. Protected Route Access
+### 3. OAuth User Creation/Login
+
+```javascript
+// POST /api/users/oauth
+// Called by NextAuth during OAuth flow
+{
+  "email": "user@example.com",
+  "provider": "google", // or "github"
+  "provider_id": "oauth_provider_id",
+  "name": "John Doe"
+}
+
+// Response
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "provider": "google"
+    },
+    "accessToken": "jwt_token",
+    "refreshToken": "refresh_token"
+  },
+  "message": "OAuth user authenticated successfully"
+}
+```
+
+### 4. Protected Route Access
 
 ```javascript
 // GET /api/users/:id
+// Supports both Bearer token and HTTP-only cookie
+
+// Using Bearer token
 // Headers: Authorization: Bearer <access_token>
+
+// Using HTTP-only cookie (automatic)
+// Cookie: accessToken=<access_token>
 
 // Response
 {
@@ -325,8 +370,9 @@ npm run dev
 ### Create Chat Session
 
 ```javascript
-// POST /api/chat-sessions
-// Headers: Authorization: Bearer <access_token>
+// POST /api/chat-sessions/create
+// Supports both Bearer token and HTTP-only cookie
+// Headers: Authorization: Bearer <access_token> (optional)
 {
   "title": "Blood Report Analysis"
 }
@@ -347,8 +393,9 @@ npm run dev
 ### Send Chat Message
 
 ```javascript
-// POST /api/chat-messages
-// Headers: Authorization: Bearer <access_token>
+// POST /api/chat-messages/create
+// Supports both Bearer token and HTTP-only cookie
+// Headers: Authorization: Bearer <access_token> (optional)
 {
   "session_id": "session_uuid",
   "content": "Please analyze my blood report",
@@ -373,10 +420,12 @@ npm run dev
 
 ### 1. **JWT Security**
 
-- Access tokens expire in 1 hour
+- Access tokens expire in 15 minutes
 - Refresh tokens expire in 7 days
 - Tokens are signed with a secret key
 - Refresh tokens stored in HTTP-only cookies
+- Supports both Bearer token and cookie authentication
+- Automatic token refresh with new tokens returned
 
 ### 2. **Password Security**
 
@@ -549,21 +598,34 @@ All API responses follow this structure:
 }
 ```
 
-### Authentication Headers
+### Authentication Methods
 
-For protected routes, include the access token:
+The API supports two authentication methods:
+
+#### Bearer Token Authentication
+
+For protected routes, include the access token in the Authorization header:
 
 ```
 Authorization: Bearer <access_token>
 ```
 
-### Cookie Authentication
+#### Cookie Authentication
 
 Refresh token is automatically sent via HTTP-only cookie:
 
 ```
 Cookie: refreshToken=<refresh_token>
 ```
+
+#### Hybrid Authentication
+
+The middleware checks for tokens in this order:
+
+1. **Authorization header** (Bearer token)
+2. **HTTP-only cookie** (accessToken)
+
+This allows seamless integration with both NextAuth (Bearer tokens) and traditional cookie-based authentication.
 
 ## Contributing
 

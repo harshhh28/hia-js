@@ -53,9 +53,11 @@ frontend/
 ### 2. **Authentication System**
 
 - **NextAuth Integration**: Seamless OAuth and email/password authentication
-- **Dual Token System**: Access tokens (1 hour) + Refresh tokens (7 days)
+- **Dual Token System**: Access tokens (15 minutes) + Refresh tokens (7 days)
 - **Automatic Token Refresh**: Background token renewal before expiration
-- **Multi-Provider Support**: Google, GitHub, and email/password authentication
+- **Multi-Provider Support**: Google OAuth, GitHub OAuth, and email/password authentication
+- **Hybrid Authentication**: NextAuth session + Backend JWT tokens
+- **OAuth Token Integration**: Seamless backend token generation for OAuth users
 
 ### 3. **Security Features**
 
@@ -66,11 +68,13 @@ frontend/
 
 ### 4. **API Integration**
 
-- **Cookie-based Authentication**: Secure HTTP-only cookie authentication
+- **Hybrid Authentication**: Bearer tokens + HTTP-only cookies
+- **Automatic Token Attachment**: Request interceptor adds access tokens from NextAuth session
 - **Automatic Retry Logic**: Failed requests retried after token refresh
 - **Error Handling**: Comprehensive error handling for auth failures
 - **Request Interceptors**: Automatic token attachment and refresh
 - **Chat API Integration**: Full CRUD operations for sessions and messages
+- **OAuth Backend Integration**: Seamless token generation for OAuth users
 
 ### 5. **User Experience**
 
@@ -178,12 +182,28 @@ frontend/
 
 ## Authentication Flow
 
-1. **User Login**: User authenticates via email/password or OAuth
-2. **Token Generation**: Backend generates access + refresh tokens
-3. **Session Storage**: Access token stored in NextAuth session
-4. **Cookie Storage**: Refresh token stored in HTTP-only cookie
-5. **Automatic Refresh**: Tokens refreshed before expiration
-6. **Logout**: Both tokens cleared on backend and frontend
+### Email/Password Authentication
+
+1. **User Login**: User submits email/password form
+2. **Backend Authentication**: Backend validates credentials and generates JWT tokens
+3. **NextAuth Session**: Frontend creates NextAuth session with user data
+4. **Token Storage**: Access token stored in NextAuth session, refresh token in HTTP-only cookie
+
+### OAuth Authentication (Google/GitHub)
+
+1. **OAuth Initiation**: User clicks "Continue with Google/GitHub"
+2. **Provider Authentication**: NextAuth handles OAuth flow with provider
+3. **Backend Integration**: NextAuth calls backend `/api/users/oauth` endpoint
+4. **Token Generation**: Backend creates/finds user and generates JWT tokens
+5. **Session Creation**: NextAuth stores tokens in session for API calls
+6. **Seamless Access**: User can immediately access protected endpoints
+
+### Token Refresh
+
+1. **Automatic Detection**: NextAuth detects token expiration (15-minute expiry)
+2. **Background Refresh**: NextAuth calls backend refresh endpoint
+3. **Token Update**: New tokens stored in NextAuth session
+4. **Transparent Operation**: User experiences no interruption
 
 ## Backend Integration
 
@@ -192,10 +212,11 @@ The frontend seamlessly integrates with the backend's authentication and chat sy
 ### Authentication Integration
 
 - **Login/Signup**: Creates both access and refresh tokens
-- **OAuth**: Handles Google/GitHub authentication with token generation
-- **Token Refresh**: Automatically refreshes expired access tokens
-- **Logout**: Clears all authentication cookies on backend
-- **API Calls**: Uses cookie-based authentication for all requests
+- **OAuth Integration**: Seamless Google/GitHub authentication with backend token generation
+- **Hybrid Authentication**: Uses Bearer tokens from NextAuth session + HTTP-only cookies
+- **Token Refresh**: NextAuth automatically refreshes expired access tokens
+- **Logout**: Clears all authentication cookies on backend and NextAuth session
+- **API Calls**: Uses Bearer token authentication with automatic token attachment
 
 ### Chat System Integration
 

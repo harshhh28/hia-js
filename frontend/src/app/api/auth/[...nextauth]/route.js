@@ -4,6 +4,35 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 
+async function refreshAccessToken(token) {
+  try {
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/refresh`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token.refreshToken}`,
+        },
+      }
+    );
+
+    const refreshedTokens = response.data.data;
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.accessToken,
+      refreshToken: refreshedTokens.refreshToken ?? token.refreshToken, // Fall back to old refresh token
+      accessTokenExpires: Date.now() + 15 * 60 * 1000, // 15 minutes
+    };
+  } catch (error) {
+    console.error("Error refreshing access token:", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
+  }
+}
+
 const authOptions = {
   providers: [
     GoogleProvider({
@@ -55,28 +84,47 @@ const authOptions = {
             name: user.name,
           });
 
-          const data = await response.data.data;
-
           if (response.data.status === "success") {
-            user.id = data.user.id.toString();
+            user.id = response.data.data.user.id.toString();
+            // Store the tokens in the user object so we can access them later
+            user.accessToken = response.data.data.accessToken;
+            user.refreshToken = response.data.data.refreshToken;
             return true;
+          } else {
+            console.error("OAuth backend response failed:", response.data);
+            return false;
           }
         } catch (error) {
-          // OAuth signin error - could log to monitoring service
+          console.error("OAuth signin error:", error);
+          return false;
         }
       }
 
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      // Initial sign in
       if (user) {
         token.id = user.id;
+        token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
+        token.accessTokenExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+        return token;
       }
-      return token;
+
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < token.accessTokenExpires) {
+        return token;
+      }
+
+      // Access token has expired, try to update it
+      return await refreshAccessToken(token);
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
+        session.accessToken = token.accessToken;
+        session.refreshToken = token.refreshToken;
       }
       return session;
     },

@@ -5,7 +5,13 @@ import {} from "dotenv/config";
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export default function verifyUserToken(req, res, next) {
-  const accessToken = req.cookies?.accessToken;
+  // Check for access token in cookies first, then in Authorization header
+  const accessToken =
+    req.cookies?.accessToken ||
+    (req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+      ? req.headers.authorization.substring(7)
+      : null);
 
   if (!accessToken) {
     return ApiResponse.error(res, "Access token required", 401);

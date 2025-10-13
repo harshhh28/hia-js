@@ -134,6 +134,8 @@ const handleOAuthUser = async (req, res) => {
           name: user.name,
           provider: user.provider,
         },
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       },
       "OAuth user authenticated successfully"
     );
@@ -189,7 +191,13 @@ const handleGetAllUsers = async (req, res) => {
 // Refresh access token
 const handleRefreshToken = async (req, res) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    // Check for refresh token in cookies first, then in Authorization header
+    const refreshToken =
+      req.cookies?.refreshToken ||
+      (req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer ")
+        ? req.headers.authorization.substring(7)
+        : null);
 
     if (!refreshToken) {
       return ApiResponse.error(res, "Refresh token required", 401);
@@ -217,6 +225,7 @@ const handleRefreshToken = async (req, res) => {
             name: user.name,
           },
           accessToken: accessToken,
+          refreshToken: newRefreshToken,
         },
         "Token refreshed successfully"
       );
