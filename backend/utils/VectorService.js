@@ -1,4 +1,4 @@
-import { HfInference } from "@huggingface/inference";
+import { InferenceClient } from "@huggingface/inference";
 import { VectorEmbedding } from "../models/VectorEmbedding.js";
 import { FallbackEmbeddingService } from "./FallbackEmbeddingService.js";
 import fs from "fs";
@@ -7,7 +7,7 @@ import path from "path";
 export class VectorService {
   constructor() {
     // Use Hugging Face Inference API directly
-    this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+    this.hf = new InferenceClient(process.env.HUGGINGFACE_API_KEY);
     this.model = "sentence-transformers/all-MiniLM-L6-v2";
     this.dimensions = 384;
     this.useFallback = false;
