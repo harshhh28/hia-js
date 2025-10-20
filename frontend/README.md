@@ -2,7 +2,7 @@
 
 ## Overview
 
-The HIA (Health Insights Agent) frontend is a Next.js application that provides a modern, responsive interface for analyzing blood reports and providing detailed health insights. The application integrates with a backend API using a sophisticated authentication system with access tokens and refresh tokens while maintaining NextAuth compatibility.
+The HIA (Health Insights Agent) frontend is a Next.js application that provides a modern, responsive interface for medical report analysis and AI-powered health insights. The application features PDF medical report upload, contextual AI chat, and comprehensive health analysis with a sophisticated authentication system.
 
 ## Project Structure
 
@@ -14,7 +14,9 @@ frontend/
 │   │   ├── auth/               # Authentication pages
 │   │   ├── components/         # React components
 │   │   │   ├── auth/          # Authentication components
+│   │   │   ├── ChatApp.jsx    # Main chat application
 │   │   │   └── Loading.jsx    # Loading component
+│   │   ├── docs/              # Documentation pages
 │   │   ├── globals.css        # Global styles
 │   │   ├── layout.js          # Root layout
 │   │   └── page.js            # Home page
@@ -22,10 +24,12 @@ frontend/
 │   │   └── useTokenRefresh.js # Token refresh hook
 │   └── utils/                 # Utility functions
 │       ├── api.js             # API client
-│       └── auth.js            # Authentication utilities
+│       ├── auth.js            # Authentication utilities
+│       └── chatApi.js         # Chat API functions
 ├── public/                    # Static assets
 ├── package.json              # Dependencies and scripts
 ├── next.config.mjs           # Next.js configuration
+├── postcss.config.mjs        # PostCSS configuration
 ├── tailwind.config.js        # Tailwind CSS configuration
 └── biome.json               # Biome linter configuration
 ```
@@ -42,15 +46,26 @@ frontend/
 
 ## Key Features
 
-### 1. **Chat Application**
+### 1. **Medical Report Analysis**
 
+- **PDF Upload Interface**: Secure medical report upload with drag-and-drop support
+- **Medical Content Validation**: Real-time validation for PDF format and medical content
+- **AI Analysis Display**: Comprehensive health insights with risk assessment
+- **Offline Analysis Support**: Basic medical analysis when AI services are unavailable
+- **Medical Disclaimers**: Proper AI-generated analysis warnings
+- **Report Management**: View, download, and delete uploaded medical reports
+
+### 2. **AI-Powered Chat System**
+
+- **Medical-Only Responses**: AI strictly responds only to medical and health-related questions
+- **Contextual Responses**: AI responses that reference uploaded medical reports
+- **In-Context Learning**: Maintains conversation context across sessions
 - **Real-time Chat Interface**: Modern chat UI with sidebar and message area
+- **Offline Fallback**: Basic medical guidance when AI services are unavailable
 - **Session Management**: Create, view, and delete chat sessions
 - **Message History**: Persistent message storage and retrieval
-- **AI Integration Ready**: Prepared for AI service integration
-- **Responsive Design**: Mobile-friendly chat interface
 
-### 2. **Authentication System**
+### 3. **Authentication System**
 
 - **NextAuth Integration**: Seamless OAuth and email/password authentication
 - **Dual Token System**: Access tokens (15 minutes) + Refresh tokens (7 days)
@@ -59,30 +74,31 @@ frontend/
 - **Hybrid Authentication**: NextAuth session + Backend JWT tokens
 - **OAuth Token Integration**: Seamless backend token generation for OAuth users
 
-### 3. **Security Features**
+### 4. **Security Features**
 
 - **HTTP-Only Cookies**: Refresh tokens stored securely
 - **CSRF Protection**: SameSite cookie attributes
 - **Environment-Aware Security**: Secure flags enabled in production
 - **Automatic Cleanup**: Tokens cleared on logout and user deletion
+- **File Security**: Secure PDF processing with medical content validation
 
-### 4. **API Integration**
+### 5. **API Integration**
 
 - **Hybrid Authentication**: Bearer tokens + HTTP-only cookies
 - **Automatic Token Attachment**: Request interceptor adds access tokens from NextAuth session
 - **Automatic Retry Logic**: Failed requests retried after token refresh
 - **Error Handling**: Comprehensive error handling for auth failures
 - **Request Interceptors**: Automatic token attachment and refresh
-- **Chat API Integration**: Full CRUD operations for sessions and messages
-- **OAuth Backend Integration**: Seamless token generation for OAuth users
+- **Medical Report API**: Full CRUD operations for medical reports and analysis
+- **Contextual Chat API**: AI-powered responses with medical context
 
-### 5. **User Experience**
+### 6. **User Experience**
 
 - **Responsive Design**: Mobile-first Tailwind CSS design
 - **Loading States**: Smooth loading indicators
 - **Protected Routes**: Automatic redirect to login for unauthenticated users
 - **Session Management**: Persistent user sessions with automatic refresh
-- **Modern UI**: Clean, intuitive chat interface with animations
+- **Modern UI**: Clean, intuitive interface with medical report analysis
 
 ## Core Components
 
@@ -95,12 +111,13 @@ frontend/
 
 ### UI Components
 
-- `src/app/page.js` - Main chat application interface
-- `src/app/components/ChatApp.jsx` - Main chat component with sidebar and message area
+- `src/app/page.js` - Main medical report analysis interface
+- `src/app/components/ChatApp.jsx` - Main chat component with medical report upload
 - `src/app/auth/page.js` - Login/signup forms
 - `src/app/components/auth/AuthProvider.jsx` - Authentication context provider
 - `src/app/components/auth/ProtectedRoute.jsx` - Route protection wrapper
 - `src/app/components/Loading.jsx` - Loading spinner component
+- `src/app/docs/page.js` - Documentation and help pages
 
 ### API Integration
 
@@ -113,6 +130,36 @@ frontend/
 
 - `src/app/layout.js` - Root layout with fonts and providers
 - `src/app/globals.css` - Global styles and Tailwind imports
+
+## Medical Report Workflow
+
+### How It Works
+
+1. **Create Session**: User creates a new chat session
+2. **Upload Report**: User uploads a PDF medical report through the interface
+3. **AI Analysis**: System automatically:
+   - Validates PDF format and medical content
+   - Extracts text from the PDF
+   - Generates comprehensive medical analysis using AI (with offline fallback)
+   - Stores embeddings for contextual learning
+4. **Interactive Chat**: User can ask medical questions about their report
+5. **Contextual Responses**: AI provides medical answers based on the uploaded report
+6. **Medical-Only Validation**: System ensures only medical questions are answered
+
+### Supported Medical Reports
+
+- **Blood Tests**: CBC, Complete Blood Count, Hematology
+- **Liver Function**: ALT, AST, ALP, Bilirubin tests
+- **Metabolic Panels**: Glucose, Cholesterol, Kidney function
+- **Specialized Tests**: Thyroid, Vitamin levels, Inflammatory markers
+- **Lab Reports**: Any medical laboratory test results
+
+### AI Analysis Features
+
+- **Risk Assessment**: Identifies potential health risks (Low/Medium/High)
+- **Personalized Recommendations**: Lifestyle and dietary advice
+- **Follow-up Suggestions**: Recommended additional tests
+- **Medical Disclaimers**: Proper AI-generated analysis warnings
 
 ## Getting Started
 
@@ -217,6 +264,15 @@ The frontend seamlessly integrates with the backend's authentication and chat sy
 - **Token Refresh**: NextAuth automatically refreshes expired access tokens
 - **Logout**: Clears all authentication cookies on backend and NextAuth session
 - **API Calls**: Uses Bearer token authentication with automatic token attachment
+
+### Medical Report Integration
+
+- **PDF Upload**: Secure medical report upload with validation
+- **AI Analysis**: Comprehensive health insights with risk assessment
+- **Contextual Chat**: AI responses that reference uploaded medical reports
+- **Vector Embeddings**: In-context learning for better responses
+- **Report Management**: View, download, and delete medical reports
+- **Session Integration**: Medical reports linked to chat sessions
 
 ### Chat System Integration
 

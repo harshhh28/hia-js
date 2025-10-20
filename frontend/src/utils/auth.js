@@ -27,7 +27,6 @@ export const handleLogout = async () => {
     const result = await logoutUser();
 
     if (result.success) {
-      console.log("Backend logout successful");
     } else {
       console.warn("Backend logout failed:", result.error);
       // Continue with frontend logout even if backend fails

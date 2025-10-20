@@ -2,7 +2,7 @@
 
 ## Overview
 
-The HIA (Health Insights Agent) backend is a Node.js Express API server that provides authentication, user management, and chat functionality for the Health Insights Agent application. It features a robust authentication system with JWT tokens, PostgreSQL database integration, and comprehensive API endpoints.
+The HIA (Health Insights Agent) backend is a Node.js Express API server that provides medical report analysis, AI-powered health insights, and contextual chat functionality. It features PDF medical report processing, vector embeddings for in-context learning, specialized medical AI analysis, and a robust authentication system with JWT tokens.
 
 ## Project Structure
 
@@ -13,25 +13,36 @@ backend/
 ├── controllers/
 │   ├── user.js             # User authentication and management
 │   ├── chatSession.js      # Chat session management
-│   └── chatMessage.js      # Chat message handling
+│   ├── chatMessage.js      # Contextual chat message handling
+│   └── medicalReport.js    # Medical report upload & analysis
 ├── middlewares/
 │   ├── index.js            # Middleware exports
 │   ├── verifyUserToken.js  # User token verification
-│   └── verifyAdminToken.js # Admin token verification
+│   ├── verifyAdminToken.js # Admin token verification
+│   └── pdfUpload.js        # PDF upload validation
 ├── models/
 │   ├── User.js             # User data model
-│   ├── ChatSession.js      # Chat session data model
-│   └── ChatMessage.js      # Chat message data model
+│   ├── ChatSession.js      # Enhanced chat session model
+│   ├── ChatMessage.js      # Chat message data model
+│   ├── MedicalReport.js    # Medical report storage model
+│   └── VectorEmbedding.js  # Vector embeddings for AI context
 ├── routes/
 │   ├── user.js             # User API routes
 │   ├── chatSession.js      # Chat session API routes
-│   └── chatMessage.js      # Chat message API routes
+│   ├── chatMessage.js      # Chat message API routes
+│   └── medicalReport.js    # Medical report API routes
 ├── utils/
 │   ├── ApiResponse.js      # Standardized API response utility
 │   ├── clearCookie.js      # Cookie clearing utility
 │   ├── generateTokens.js    # JWT token generation
 │   ├── setCookie.js        # Cookie setting utility
-│   └── uuidValidation.js   # UUID validation utility
+│   ├── uuidValidation.js   # UUID validation utility
+│   ├── PDFProcessor.js     # PDF text extraction & validation
+│   ├── VectorService.js    # AI embeddings & contextual learning
+│   └── Prompt.js           # Medical analysis prompts
+├── uploads/
+│   └── medical-reports/    # Medical report file storage
+├── logs/                   # Application logs
 ├── __tests__/              # Test files
 ├── index.js                # Main server entry point
 ├── package.json            # Dependencies and scripts
@@ -42,16 +53,44 @@ backend/
 
 - **Runtime**: Node.js with ES Modules
 - **Framework**: Express.js 5.1.0
-- **Database**: PostgreSQL with pg driver
+- **Database**: PostgreSQL with pg driver + pgvector extension
 - **Authentication**: JWT (jsonwebtoken 9.0.2)
 - **Password Hashing**: bcryptjs 2.4.3
 - **CORS**: cors 2.8.5
 - **Environment**: dotenv 17.2.3
 - **Development**: nodemon 3.1.10
+- **AI Integration**:
+  - Groq SDK for medical analysis with multi-tier fallback
+  - Offline medical analysis when API is unavailable
+  - Hugging Face Inference API (sentence-transformers/all-MiniLM-L6-v2) - FREE
+  - Fallback hash-based embeddings (no API key required)
+  - Medical-only question validation
+- **PDF Processing**: pdf-parse for medical report extraction
+- **File Upload**: multer for secure PDF handling
 
 ## Key Features
 
-### 1. **Authentication System**
+### 1. **Medical Report Analysis**
+
+- **PDF Upload & Validation**: Secure PDF upload with strict medical content validation
+- **Medical Content Filtering**: Only processes PDFs containing medical keywords and content
+- **Text Extraction**: Automatic text extraction from medical reports using pdf-parse
+- **AI Analysis**: Comprehensive medical analysis using specialized Groq AI prompts
+- **Offline Fallback**: Basic medical analysis when AI services are unavailable
+- **Risk Assessment**: Identifies potential health risks with Low/Medium/High levels
+- **Personalized Recommendations**: Lifestyle modifications, dietary advice, follow-up tests
+
+### 2. **AI-Powered Intelligence**
+
+- **Vector Embeddings**: Hugging Face embeddings for contextual medical conversations
+- **Medical-Only Responses**: AI strictly responds only to medical and health-related questions
+- **In-Context Learning**: pgvector database for similarity search and context retrieval
+- **Multi-Tier Architecture**: Groq AI with automatic model fallback and offline mode
+- **Contextual Responses**: AI responses that reference uploaded medical reports
+- **Offline Fallback**: Basic medical guidance when AI services are unavailable
+- **Knowledge Retention**: Maintains conversation context across sessions
+
+### 3. **Authentication System**
 
 - **JWT Tokens**: Access tokens (15 minutes) + Refresh tokens (7 days)
 - **Multi-Provider Support**: Email/password, Google OAuth, GitHub OAuth
@@ -69,23 +108,50 @@ backend/
 - **Account Deletion**: Secure user account removal
 - **Admin Functions**: User listing and management
 
-### 3. **Chat System**
+### 4. **Enhanced Chat System**
 
-- **Session Management**: Create and manage chat sessions
-- **Message Handling**: Store and retrieve chat messages
-- **User Isolation**: Users can only access their own chat data
+- **Session Management**: Create and manage chat sessions with medical report support
+- **Contextual Messages**: AI responses that reference uploaded medical reports
+- **Message Handling**: Store and retrieve chat messages with context
+- **User Isolation**: Users can only access their own chat data and medical reports
 - **UUID Support**: Proper UUID validation and handling
 
-### 4. **Security Features**
+### 5. **Security Features**
 
 - **CORS Protection**: Configurable cross-origin resource sharing
 - **Input Validation**: Request validation and sanitization
+- **File Security**: Secure PDF processing with medical content validation
 - **Error Handling**: Comprehensive error handling and logging
 - **Environment Variables**: Secure configuration management
 
 ## API Endpoints
 
-Visit http://localhost:5000/api/docs for detailed info.
+### Medical Reports
+
+- `POST /api/medical-reports/upload/:session_id` - Upload and analyze medical report
+- `GET /api/medical-reports/:session_id` - Get medical report information
+- `DELETE /api/medical-reports/:session_id` - Delete medical report
+
+### Enhanced Chat Messages
+
+- `POST /api/chat-messages/contextual` - Generate contextual AI response
+- `POST /api/chat-messages/create` - Create regular chat message
+- `GET /api/chat-messages/session/:session_id` - Get session messages
+
+### Chat Sessions
+
+- `POST /api/chat-sessions/create` - Create new chat session
+- `GET /api/chat-sessions/user` - Get user's chat sessions
+- `DELETE /api/chat-sessions/:id` - Delete chat session
+
+### User Management
+
+- `POST /api/users/signup` - User registration
+- `POST /api/users/login` - User login
+- `POST /api/users/refresh` - Refresh JWT tokens
+- `GET /api/users/:id` - Get user profile
+
+Visit http://localhost:5000/api/docs for detailed API documentation.
 
 ## Database Schema
 
@@ -103,26 +169,46 @@ CREATE TABLE users (
 );
 ```
 
-### Chat Sessions Table
+### Chat Sessions Table (Enhanced)
 
 ```sql
 CREATE TABLE chat_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    title TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    title TEXT NOT NULL,
+    has_medical_report BOOLEAN DEFAULT FALSE,
+    medical_analysis TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
-### Chat Messages Table
+### Medical Reports Table
 
 ```sql
-CREATE TABLE chat_messages (
+CREATE TABLE medical_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL,
+    extracted_text TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### Vector Embeddings Table
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE vector_embeddings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     session_id UUID REFERENCES chat_sessions(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    role VARCHAR(20) CHECK (role IN ('user', 'assistant')) NOT NULL,
+    embedding vector(1536),
+    metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
@@ -216,7 +302,18 @@ npm run dev
 
    # JWT Configuration
    JWT_SECRET=your-super-secret-jwt-key-here
-   ADMIN_TOKEN=your-super-secret-admin-token-here
+
+   # AI Integration
+   GROQ_API_KEY=your-groq-api-key-here
+   HUGGINGFACE_API_KEY=your-huggingface-api-key-here
+
+   # File Upload Configuration
+   MAX_FILE_SIZE=10485760
+   UPLOAD_DIR=uploads/medical-reports
+
+   # Logging Configuration
+   LOG_LEVEL=INFO
+   LOG_DIR=logs
    ```
 
 5. **Start the development server**
@@ -334,6 +431,93 @@ npm run dev
     }
   },
   "message": "User retrieved successfully"
+}
+```
+
+## Medical Report Analysis Usage
+
+### Upload Medical Report
+
+```javascript
+// POST /api/medical-reports/upload/:session_id
+// Content-Type: multipart/form-data
+// Headers: Authorization: Bearer <access_token>
+
+// Form data:
+// - medicalReport: PDF file (field name must be 'medicalReport')
+// - session_id: UUID in request body
+
+// Response
+{
+  "status": "success",
+  "data": {
+    "medicalReport": {
+      "id": "report_uuid",
+      "filename": "blood_test_report.pdf",
+      "uploadedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "analysis": "Comprehensive AI-generated medical analysis...",
+    "validation": {
+      "isValid": true,
+      "foundKeywords": ["hemoglobin", "glucose", "cholesterol"],
+      "confidence": 85.5
+    }
+  },
+  "message": "Medical report uploaded and analyzed successfully"
+}
+```
+
+### Get Medical Report Information
+
+```javascript
+// GET /api/medical-reports/:session_id
+// Headers: Authorization: Bearer <access_token>
+
+// Response
+{
+  "status": "success",
+  "data": {
+    "id": "report_uuid",
+    "filename": "blood_test_report.pdf",
+    "uploadedAt": "2024-01-01T00:00:00.000Z",
+    "processedAt": "2024-01-01T00:00:00.000Z",
+    "fileSize": 1024000,
+    "hasAnalysis": true
+  },
+  "message": "Medical report retrieved successfully"
+}
+```
+
+### Generate Contextual AI Response
+
+```javascript
+// POST /api/chat-messages/contextual
+// Headers: Authorization: Bearer <access_token>
+{
+  "session_id": "session_uuid",
+  "content": "What does my cholesterol level mean?"
+}
+
+// Response
+{
+  "status": "success",
+  "data": {
+    "userMessage": {
+      "id": "message_uuid",
+      "session_id": "session_uuid",
+      "content": "What does my cholesterol level mean?",
+      "role": "user",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    },
+    "assistantMessage": {
+      "id": "response_uuid",
+      "session_id": "session_uuid",
+      "content": "Based on your medical report, your cholesterol level of 220 mg/dL indicates...",
+      "role": "assistant",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  },
+  "message": "Contextual response generated successfully"
 }
 ```
 

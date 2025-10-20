@@ -10,7 +10,8 @@ export default function ProtectedRoute({ children }) {
     return <Loading />;
   }
 
-  if (!session) {
+  // Check if session exists but tokens are null (refresh failed)
+  if (!session || !session.accessToken) {
     router.push("/auth");
     return null;
   }

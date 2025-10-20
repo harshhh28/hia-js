@@ -6,6 +6,33 @@ import GoogleProvider from "next-auth/providers/google";
 
 async function refreshAccessToken(token) {
   try {
+    console.log("Attempting to refresh token...");
+    console.log("Refresh token exists:", !!token.refreshToken);
+
+    if (!token.refreshToken) {
+      console.log("No refresh token available");
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+        accessToken: null,
+        refreshToken: null,
+      };
+    }
+
+    // Basic token format validation
+    if (
+      typeof token.refreshToken !== "string" ||
+      token.refreshToken.split(".").length !== 3
+    ) {
+      console.log("Malformed refresh token detected, clearing session");
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+        accessToken: null,
+        refreshToken: null,
+      };
+    }
+
     const response = await axios.post(
       `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/refresh`,
       {},
@@ -16,6 +43,7 @@ async function refreshAccessToken(token) {
       }
     );
 
+    console.log("Token refresh successful");
     const refreshedTokens = response.data.data;
 
     return {
@@ -26,6 +54,20 @@ async function refreshAccessToken(token) {
     };
   } catch (error) {
     console.error("Error refreshing access token:", error);
+    console.error("Error status:", error.response?.status);
+    console.error("Error message:", error.response?.data?.message);
+
+    // If refresh token is expired or invalid, clear the session
+    if (error.response?.status === 401) {
+      console.log("Refresh token is invalid/expired, clearing session");
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+        accessToken: null,
+        refreshToken: null,
+      };
+    }
+
     return {
       ...token,
       error: "RefreshAccessTokenError",
@@ -54,12 +96,70 @@ const authOptions = {
       async authorize(credentials) {
         try {
           const { email, password, name, isSignup } = credentials;
-          return {
-            id: "1", // This will be replaced with actual user ID
-            email: email,
-            name: name || email.split("@")[0],
-          };
+
+          console.log("Credentials provider called with:", {
+            email,
+            name,
+            isSignup,
+          });
+
+          // Create axios instance with credentials to handle cookies
+          const authClient = axios.create({
+            baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+            withCredentials: true,
+            timeout: 10000,
+          });
+
+          if (isSignup === "true") {
+            // Handle signup
+            const response = await authClient.post("/api/users/signup", {
+              email,
+              password,
+              name,
+            });
+
+            if (response.data.status === "success") {
+              console.log(
+                "Signup successful, user data:",
+                response.data.data.user
+              );
+              return {
+                id: response.data.data.user.id.toString(),
+                email: response.data.data.user.email,
+                name: response.data.data.user.name,
+                accessToken: response.data.data.accessToken,
+                refreshToken: response.data.data.refreshToken,
+              };
+            } else {
+              console.error("Signup failed:", response.data.message);
+              return null;
+            }
+          } else {
+            // Handle login
+            const response = await authClient.post("/api/users/login", {
+              email,
+              password,
+            });
+
+            if (response.data.status === "success") {
+              console.log(
+                "Login successful, user data:",
+                response.data.data.user
+              );
+              return {
+                id: response.data.data.user.id.toString(),
+                email: response.data.data.user.email,
+                name: response.data.data.user.name,
+                accessToken: response.data.data.accessToken,
+                refreshToken: response.data.data.refreshToken,
+              };
+            } else {
+              console.error("Login failed:", response.data.message);
+              return null;
+            }
+          }
         } catch (error) {
+          console.error("Credentials authentication error:", error);
           return null;
         }
       },
@@ -106,9 +206,16 @@ const authOptions = {
       // Initial sign in
       if (user) {
         token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
         token.accessTokenExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+        return token;
+      }
+
+      // If there's already an error, don't try to refresh
+      if (token.error === "RefreshAccessTokenError") {
         return token;
       }
 
@@ -123,8 +230,17 @@ const authOptions = {
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
+        session.user.email = token.email;
+        session.user.name = token.name;
         session.accessToken = token.accessToken;
         session.refreshToken = token.refreshToken;
+
+        // If there's a token error or tokens are null, clear the session
+        if (token.error === "RefreshAccessTokenError" || !token.accessToken) {
+          session.accessToken = null;
+          session.refreshToken = null;
+          session.user = null;
+        }
       }
       return session;
     },
@@ -134,6 +250,7 @@ const authOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 15 * 60, // 15 minutes
   },
   cookies: {
     sessionToken: {

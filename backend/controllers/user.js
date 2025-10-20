@@ -45,6 +45,8 @@ const handleUserSignup = async (req, res) => {
           email: user.email,
           name: user.name,
         },
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       },
       "User signed up successfully"
     );
@@ -83,6 +85,8 @@ const handleUserLogin = async (req, res) => {
           email: user.email,
           name: user.name,
         },
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       },
       "User logged in successfully"
     );
@@ -203,6 +207,18 @@ const handleRefreshToken = async (req, res) => {
       return ApiResponse.error(res, "Refresh token required", 401);
     }
 
+    // Basic token format validation
+    if (
+      typeof refreshToken !== "string" ||
+      refreshToken.split(".").length !== 3
+    ) {
+      console.error(
+        "Malformed refresh token received:",
+        refreshToken.substring(0, 20) + "..."
+      );
+      return ApiResponse.error(res, "Invalid refresh token format", 401);
+    }
+
     try {
       const decoded = jwt.verify(refreshToken, JWT_SECRET);
       const user = await User.findById(decoded.data.id);
@@ -230,8 +246,11 @@ const handleRefreshToken = async (req, res) => {
         "Token refreshed successfully"
       );
     } catch (error) {
+      console.error("JWT verification error:", error);
       if (error.name === "TokenExpiredError") {
         return ApiResponse.error(res, "Refresh token expired", 401);
+      } else if (error.name === "JsonWebTokenError") {
+        return ApiResponse.error(res, "Invalid refresh token format", 401);
       }
       return ApiResponse.error(res, "Invalid refresh token", 401);
     }

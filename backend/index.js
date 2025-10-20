@@ -5,10 +5,14 @@ import {} from "dotenv/config";
 import { User } from "./models/User.js";
 import { ChatSession } from "./models/ChatSession.js";
 import { ChatMessage } from "./models/ChatMessage.js";
+import { MedicalReport } from "./models/MedicalReport.js";
+import { VectorEmbedding } from "./models/VectorEmbedding.js";
 import userRoutes from "./routes/user.js";
-import chatSessionRoutes from "./routes/chatsession.js";
-import chatMessageRoutes from "./routes/chatmessage.js";
+import chatSessionRoutes from "./routes/chatSession.js";
+import chatMessageRoutes from "./routes/chatMessage.js";
+import medicalReportRoutes from "./routes/medicalReport.js";
 import docsRoutes from "./routes/docs.js";
+import groqRoutes from "./routes/groq.js";
 
 const app = express();
 
@@ -29,7 +33,9 @@ app.use(cookieParser());
 app.use("/api/users", userRoutes);
 app.use("/api/chat-sessions", chatSessionRoutes);
 app.use("/api/chat-messages", chatMessageRoutes);
+app.use("/api/medical-reports", medicalReportRoutes);
 app.use("/api/docs", docsRoutes);
+app.use("/api/groq", groqRoutes);
 
 app.listen(process.env.PORT, async () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
@@ -38,6 +44,8 @@ app.listen(process.env.PORT, async () => {
     await User.createTable();
     await ChatSession.createTable();
     await ChatMessage.createTable();
+    await MedicalReport.createTable();
+    await VectorEmbedding.createTable();
     console.log("All database tables initialized successfully");
   } catch (error) {
     console.error("Error initializing database tables:", error);

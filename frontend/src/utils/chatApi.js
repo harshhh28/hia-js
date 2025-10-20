@@ -93,4 +93,26 @@ export const chatMessageApi = {
       };
     }
   },
+
+  // Get AI response for a message (contextual)
+  getAIResponse: async (sessionId, message) => {
+    try {
+      const response = await api.post("/api/chat-messages/contextual", {
+        session_id: sessionId,
+        content: message,
+      });
+      return {
+        success: true,
+        data: {
+          assistantMessage: response.data.data.assistantMessage,
+        },
+      };
+    } catch (error) {
+      console.error("Get AI response error:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || "Failed to get AI response",
+      };
+    }
+  },
 };

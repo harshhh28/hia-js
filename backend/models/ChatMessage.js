@@ -13,7 +13,6 @@ export class ChatMessage {
         `;
     try {
       await pool.query(query);
-      console.log("Chat messages table created successfully");
     } catch (error) {
       console.error("Error creating chat messages table", error);
       throw error;

@@ -85,6 +85,13 @@ export const apiCall = async (config, retryCount = 0) => {
       throw new Error("Authentication failed");
     }
 
+    // For 400 errors (validation errors), let the calling function handle them
+    // Don't throw these errors as they are expected and should be handled gracefully
+    if (error.response?.status === 400) {
+      throw error; // Still throw 400 errors so they can be caught by the calling function
+    }
+
+    // For other errors, throw them
     throw error;
   }
 };

@@ -77,10 +77,39 @@ router.get("/", (req, res) => {
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 30px;
-            height: fit-content;
+            height: calc(100vh - 40px);
+            max-height: calc(100vh - 40px);
             position: sticky;
             top: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* Custom scrollbar for sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5a6fd8, #6a4190);
+        }
+
+        /* Firefox scrollbar */
+        .sidebar {
+            scrollbar-width: thin;
+            scrollbar-color: #667eea rgba(102, 126, 234, 0.1);
         }
 
         .sidebar h3 {
@@ -301,6 +330,9 @@ router.get("/", (req, res) => {
             
             .sidebar {
                 position: static;
+                height: auto;
+                max-height: 400px;
+                margin-bottom: 20px;
             }
             
             .header h1 {
@@ -346,8 +378,22 @@ router.get("/", (req, res) => {
                 </div>
 
                 <div class="nav-section">
+                    <h4>🩺 Medical Reports</h4>
+                    <a href="#upload-report" class="nav-item">POST /upload/:session_id</a>
+                    <a href="#get-report" class="nav-item">GET /:session_id</a>
+                    <a href="#delete-report" class="nav-item">DELETE /:session_id</a>
+                </div>
+
+                <div class="nav-section">
+                    <h4>🤖 AI Services</h4>
+                    <a href="#groq-analysis" class="nav-item">POST /groq/medical-analysis</a>
+                    <a href="#groq-chat" class="nav-item">POST /groq/chat-response</a>
+                </div>
+
+                <div class="nav-section">
                     <h4>📝 Chat Messages</h4>
                     <a href="#create-message" class="nav-item">POST /create</a>
+                    <a href="#contextual-response" class="nav-item">POST /contextual</a>
                     <a href="#get-messages" class="nav-item">GET /session/:id</a>
                     <a href="#get-all-messages" class="nav-item">GET / (Admin)</a>
                 </div>
@@ -1034,6 +1080,295 @@ Content-Type: application/json</div>
                 </div>
 
                 <div class="section">
+                    <h2>🩺 Medical Reports</h2>
+
+                    <div class="endpoint" id="upload-report">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="path">/api/medical-reports/upload/:session_id</span>
+                        </div>
+                        <div class="description">Upload and analyze a medical report PDF with AI-powered insights</div>
+                        <span class="auth-badge required">Authentication Required</span>
+
+                        <div class="subsection">
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: multipart/form-data</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Cookies (Optional)</h4>
+                            <div class="code-block">accessToken: HTTP-only cookie with access token</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Request Body</h4>
+                            <div class="json-viewer">Form Data:
+- medicalReport: PDF file (required)
+- session_id: UUID in URL parameter</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Validation</h4>
+                            <ul class="validation-list">
+                                <li>PDF file must contain medical content</li>
+                                <li>File size limit: 10MB</li>
+                                <li>Only medical keywords accepted (200+ keywords)</li>
+                                <li>Non-medical PDFs are rejected with clear error messages</li>
+                                <li>Session must belong to authenticated user</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Status Codes</h4>
+                            <span class="status-code success">200</span> Medical report uploaded and analyzed successfully<br>
+                            <span class="status-code client-error">400</span> Validation error or non-medical content<br>
+                            <span class="status-code client-error">401</span> Invalid or expired access token<br>
+                            <span class="status-code client-error">404</span> Session not found<br>
+                            <span class="status-code error">500</span> Internal server error
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Response</h4>
+                            <div class="json-viewer">{
+  "status": "success",
+  "data": {
+    "medicalReport": {
+      "id": "report_uuid",
+      "filename": "blood_test_report.pdf",
+      "uploadedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "analysis": "Comprehensive AI-generated medical analysis...",
+    "validation": {
+      "isValid": true,
+      "foundKeywords": ["hemoglobin", "glucose", "cholesterol"],
+      "confidence": 85.5
+    }
+  },
+  "message": "Medical report uploaded and analyzed successfully"
+}</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint" id="get-report">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="path">/api/medical-reports/:session_id</span>
+                        </div>
+                        <div class="description">Get medical report information for a session</div>
+                        <span class="auth-badge required">Authentication Required</span>
+
+                        <div class="subsection">
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Cookies (Optional)</h4>
+                            <div class="code-block">accessToken: HTTP-only cookie with access token</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Validation</h4>
+                            <ul class="validation-list">
+                                <li>Session ID must be valid UUID</li>
+                                <li>Session must exist</li>
+                                <li>User can only access their own medical reports</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Status Codes</h4>
+                            <span class="status-code success">200</span> Medical report retrieved successfully<br>
+                            <span class="status-code client-error">401</span> Invalid or expired access token<br>
+                            <span class="status-code client-error">404</span> Medical report not found<br>
+                            <span class="status-code error">500</span> Internal server error
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Response</h4>
+                            <div class="json-viewer">{
+  "status": "success",
+  "data": {
+    "id": "report_uuid",
+    "filename": "blood_test_report.pdf",
+    "uploadedAt": "2024-01-01T00:00:00.000Z",
+    "processedAt": "2024-01-01T00:00:00.000Z",
+    "fileSize": 1024000,
+    "hasAnalysis": true
+  },
+  "message": "Medical report retrieved successfully"
+}</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint" id="delete-report">
+                        <div class="endpoint-header">
+                            <span class="method delete">DELETE</span>
+                            <span class="path">/api/medical-reports/:session_id</span>
+                        </div>
+                        <div class="description">Delete medical report for a session</div>
+                        <span class="auth-badge required">Authentication Required</span>
+
+                        <div class="subsection">
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Cookies (Optional)</h4>
+                            <div class="code-block">accessToken: HTTP-only cookie with access token</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Validation</h4>
+                            <ul class="validation-list">
+                                <li>Session ID must be valid UUID</li>
+                                <li>Medical report must exist</li>
+                                <li>User can only delete their own medical reports</li>
+                                <li>Associated file is automatically cleaned up</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Status Codes</h4>
+                            <span class="status-code success">200</span> Medical report deleted successfully<br>
+                            <span class="status-code client-error">401</span> Invalid or expired access token<br>
+                            <span class="status-code client-error">404</span> Medical report not found<br>
+                            <span class="status-code error">500</span> Internal server error
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Response</h4>
+                            <div class="json-viewer">{
+  "status": "success",
+  "data": {
+    "id": "report_uuid",
+    "filename": "blood_test_report.pdf"
+  },
+  "message": "Medical report deleted successfully"
+}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>🤖 AI Services</h2>
+
+                    <div class="endpoint" id="groq-analysis">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="path">/api/groq/medical-analysis</span>
+                        </div>
+                        <div class="description">Generate AI-powered medical analysis with offline fallback</div>
+                        <span class="auth-badge required">Authentication Required</span>
+
+                        <div class="subsection">
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Request Body</h4>
+                            <div class="json-viewer">{
+  "text": "Medical report text content",
+  "prompt": "Specialist medical analysis prompt"
+}</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Features</h4>
+                            <ul class="validation-list">
+                                <li>Multi-tier AI model fallback (Primary → Secondary → Tertiary → Fallback)</li>
+                                <li>Offline analysis when API is unavailable</li>
+                                <li>Text chunking for large medical reports</li>
+                                <li>Medical-only content validation</li>
+                                <li>Plain text response format (no markdown)</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Status Codes</h4>
+                            <span class="status-code success">200</span> Medical analysis generated successfully<br>
+                            <span class="status-code client-error">400</span> Invalid request or non-medical content<br>
+                            <span class="status-code client-error">401</span> Invalid or expired access token<br>
+                            <span class="status-code error">500</span> Internal server error
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Response</h4>
+                            <div class="json-viewer">{
+  "status": "success",
+  "data": {
+    "analysis": "Comprehensive medical analysis with risk assessment and recommendations...",
+    "modelUsed": "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "isOffline": false
+  },
+  "message": "Medical analysis generated successfully"
+}</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint" id="groq-chat">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="path">/api/groq/chat-response</span>
+                        </div>
+                        <div class="description">Generate contextual AI chat responses for medical questions</div>
+                        <span class="auth-badge required">Authentication Required</span>
+
+                        <div class="subsection">
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Request Body</h4>
+                            <div class="json-viewer">{
+  "prompt": "Contextual medical chat prompt",
+  "question": "User's medical question"
+}</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Features</h4>
+                            <ul class="validation-list">
+                                <li>Medical-only question validation</li>
+                                <li>Contextual responses using uploaded medical reports</li>
+                                <li>Offline fallback for basic medical guidance</li>
+                                <li>Plain text response format (no markdown)</li>
+                                <li>Vector embeddings for context retrieval</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Status Codes</h4>
+                            <span class="status-code success">200</span> Chat response generated successfully<br>
+                            <span class="status-code client-error">400</span> Non-medical question or validation error<br>
+                            <span class="status-code client-error">401</span> Invalid or expired access token<br>
+                            <span class="status-code error">500</span> Internal server error
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Response</h4>
+                            <div class="json-viewer">{
+  "status": "success",
+  "data": {
+    "response": "Based on your medical report, your cholesterol level indicates...",
+    "modelUsed": "llama-3.3-70b-versatile",
+    "isOffline": false
+  },
+  "message": "Chat response generated successfully"
+}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
                     <h2>📝 Chat Messages</h2>
 
                     <div class="endpoint" id="create-message">
@@ -1095,6 +1430,83 @@ Content-Type: application/json</div>
     "created_at": "2024-01-01T00:00:00.000Z"
   },
   "message": "Chat message created"
+}</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint" id="contextual-response">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="path">/api/chat-messages/contextual</span>
+                        </div>
+                        <div class="description">Generate contextual AI response for medical questions with offline fallback</div>
+                        <span class="auth-badge required">Authentication Required</span>
+
+                        <div class="subsection">
+                            <h4>Headers (Optional)</h4>
+                            <div class="code-block">Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Cookies (Optional)</h4>
+                            <div class="code-block">accessToken: HTTP-only cookie with access token</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Request Body</h4>
+                            <div class="json-viewer">{
+  "session_id": "session_uuid",
+  "content": "What does my cholesterol level mean?"
+}</div>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Validation</h4>
+                            <ul class="validation-list">
+                                <li>Session ID must be valid UUID</li>
+                                <li>Content must be provided</li>
+                                <li>Only medical questions are answered</li>
+                                <li>Non-medical questions are redirected</li>
+                                <li>Session must belong to authenticated user</li>
+                                <li>Context from uploaded medical reports is used</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Features</h4>
+                            <ul class="validation-list">
+                                <li>Medical-only question validation</li>
+                                <li>Contextual responses using vector embeddings</li>
+                                <li>Offline fallback for basic medical guidance</li>
+                                <li>Plain text response format (no markdown)</li>
+                                <li>Multi-tier AI model fallback</li>
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Status Codes</h4>
+                            <span class="status-code success">200</span> Contextual response generated successfully<br>
+                            <span class="status-code client-error">400</span> Non-medical question or validation error<br>
+                            <span class="status-code client-error">401</span> Invalid or expired access token<br>
+                            <span class="status-code client-error">404</span> Session not found<br>
+                            <span class="status-code error">500</span> Internal server error
+                        </div>
+
+                        <div class="subsection">
+                            <h4>Response</h4>
+                            <div class="json-viewer">{
+  "status": "success",
+  "data": {
+    "assistantMessage": {
+      "id": "response_uuid",
+      "session_id": "session_uuid",
+      "content": "Based on your medical report, your cholesterol level of 220 mg/dL indicates...",
+      "role": "assistant",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  },
+  "message": "Contextual response generated successfully"
 }</div>
                         </div>
                     </div>

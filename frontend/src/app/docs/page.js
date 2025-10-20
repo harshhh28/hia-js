@@ -6,13 +6,14 @@ export default function DocsPage() {
   const [activeSection, setActiveSection] = useState("overview");
 
   const sections = [
-    { id: "overview", title: "📋 Overview", icon: "📋" },
-    { id: "authentication", title: "🔐 Authentication", icon: "🔐" },
-    { id: "api-client", title: "🌐 API Client", icon: "🌐" },
-    { id: "chat-sessions", title: "💬 Chat Sessions", icon: "💬" },
-    { id: "chat-messages", title: "📝 Chat Messages", icon: "📝" },
-    { id: "error-handling", title: "⚠️ Error Handling", icon: "⚠️" },
-    { id: "examples", title: "💡 Examples", icon: "💡" },
+    { id: "overview", title: "Overview", icon: "📋" },
+    { id: "authentication", title: "Authentication", icon: "🔐" },
+    { id: "api-client", title: "API Client", icon: "🌐" },
+    { id: "medical-reports", title: "Medical Reports", icon: "🩺" },
+    { id: "chat-sessions", title: "Chat Sessions", icon: "💬" },
+    { id: "chat-messages", title: "Chat Messages", icon: "📝" },
+    { id: "error-handling", title: "Error Handling", icon: "⚠️" },
+    { id: "examples", title: "Examples", icon: "💡" },
   ];
 
   const renderOverview = () => (
@@ -25,7 +26,8 @@ export default function DocsPage() {
           The HIA Frontend provides a comprehensive set of API utilities for
           interacting with the backend. All API calls are automatically
           authenticated using NextAuth sessions and include proper error
-          handling.
+          handling. The system now includes medical content validation and
+          offline fallback capabilities.
         </p>
       </div>
 
@@ -37,6 +39,8 @@ export default function DocsPage() {
           <ul className="space-y-2 text-gray-700">
             <li>• Automatic token attachment from NextAuth session</li>
             <li>• Automatic retry logic for expired tokens</li>
+            <li>• Medical content validation for PDF uploads</li>
+            <li>• Offline fallback for AI services</li>
             <li>• Comprehensive error handling</li>
             <li>• TypeScript-ready API responses</li>
             <li>• Cookie-based authentication support</li>
@@ -58,6 +62,13 @@ export default function DocsPage() {
               - Chat-specific APIs
             </li>
             <li>
+              •{" "}
+              <code className="bg-gray-100 px-2 py-1 rounded">
+                medicalReportApi.js
+              </code>{" "}
+              - Medical report APIs
+            </li>
+            <li>
               • <code className="bg-gray-100 px-2 py-1 rounded">auth.js</code> -
               Authentication utilities
             </li>
@@ -72,6 +83,9 @@ export default function DocsPage() {
         <ul className="space-y-2 text-yellow-700">
           <li>• All API calls require authentication (except login/signup)</li>
           <li>• Tokens are automatically attached from NextAuth session</li>
+          <li>• Medical PDFs are validated for medical content only</li>
+          <li>• AI responses are limited to medical questions only</li>
+          <li>• Offline fallback available when AI services are unavailable</li>
           <li>• Failed requests are automatically retried once</li>
           <li>• Users are redirected to login on authentication failure</li>
         </ul>
@@ -332,6 +346,276 @@ export default function DocsPage() {
     </div>
   );
 
+  const renderMedicalReports = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-red-50 to-pink-50 p-6 rounded-xl border border-red-200">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Medical Reports API
+        </h2>
+        <p className="text-gray-700 leading-relaxed">
+          Upload and manage medical reports with AI-powered analysis. The system
+          validates medical content and provides comprehensive health insights
+          with offline fallback capabilities.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+              POST
+            </span>
+            <code className="text-gray-900 font-mono">
+              medicalReportApi.uploadReport(sessionId, file)
+            </code>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Upload and analyze a medical report PDF
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Parameters</h4>
+              <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                <div>
+                  <code className="text-blue-600">sessionId</code>{" "}
+                  <span className="text-gray-500">(string, required)</span> -
+                  Session UUID
+                </div>
+                <div>
+                  <code className="text-blue-600">file</code>{" "}
+                  <span className="text-gray-500">(File, required)</span> - PDF
+                  medical report file
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Validation</h4>
+              <ul className="space-y-1 text-gray-700">
+                <li>• PDF file must contain medical content</li>
+                <li>• File size limit: 10MB</li>
+                <li>• Only medical keywords accepted</li>
+                <li>• Non-medical PDFs are rejected</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Response</h4>
+              <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                <div>{"{"}</div>
+                <div className="ml-4">
+                  <div>
+                    <span className="text-purple-400">success</span>:{" "}
+                    <span className="text-orange-400">true</span>,
+                  </div>
+                  <div>
+                    <span className="text-purple-400">data</span>: {"{"}
+                  </div>
+                  <div className="ml-4">
+                    <div>
+                      <span className="text-purple-400">medicalReport</span>:{" "}
+                      {"{"}
+                    </div>
+                    <div className="ml-4">
+                      <div>
+                        <span className="text-purple-400">id</span>:{" "}
+                        <span className="text-green-400">"report_uuid"</span>,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">filename</span>:{" "}
+                        <span className="text-green-400">"blood_test.pdf"</span>
+                        ,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">uploadedAt</span>:{" "}
+                        <span className="text-green-400">
+                          "2024-01-01T00:00:00.000Z"
+                        </span>
+                      </div>
+                    </div>
+                    <div>{"}"},</div>
+                    <div>
+                      <span className="text-purple-400">analysis</span>:{" "}
+                      <span className="text-green-400">
+                        "AI-generated medical analysis..."
+                      </span>
+                      ,
+                    </div>
+                    <div>
+                      <span className="text-purple-400">validation</span>: {"{"}
+                    </div>
+                    <div className="ml-4">
+                      <div>
+                        <span className="text-purple-400">isValid</span>:{" "}
+                        <span className="text-orange-400">true</span>,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">foundKeywords</span>:
+                        [
+                        <span className="text-green-400">
+                          "hemoglobin", "glucose"
+                        </span>
+                        ],
+                      </div>
+                      <div>
+                        <span className="text-purple-400">confidence</span>:{" "}
+                        <span className="text-orange-400">85.5</span>
+                      </div>
+                    </div>
+                    <div>{"}"}</div>
+                  </div>
+                  <div>{"}"}</div>
+                </div>
+                <div>{"}"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+              GET
+            </span>
+            <code className="text-gray-900 font-mono">
+              medicalReportApi.getReport(sessionId)
+            </code>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Get medical report information for a session
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Parameters</h4>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div>
+                  <code className="text-blue-600">sessionId</code>{" "}
+                  <span className="text-gray-500">(string, required)</span> -
+                  Session UUID
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Response</h4>
+              <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                <div>{"{"}</div>
+                <div className="ml-4">
+                  <div>
+                    <span className="text-purple-400">success</span>:{" "}
+                    <span className="text-orange-400">true</span>,
+                  </div>
+                  <div>
+                    <span className="text-purple-400">data</span>: {"{"}
+                  </div>
+                  <div className="ml-4">
+                    <div>
+                      <span className="text-purple-400">id</span>:{" "}
+                      <span className="text-green-400">"report_uuid"</span>,
+                    </div>
+                    <div>
+                      <span className="text-purple-400">filename</span>:{" "}
+                      <span className="text-green-400">"blood_test.pdf"</span>,
+                    </div>
+                    <div>
+                      <span className="text-purple-400">uploadedAt</span>:{" "}
+                      <span className="text-green-400">
+                        "2024-01-01T00:00:00.000Z"
+                      </span>
+                      ,
+                    </div>
+                    <div>
+                      <span className="text-purple-400">fileSize</span>:{" "}
+                      <span className="text-orange-400">1024000</span>,
+                    </div>
+                    <div>
+                      <span className="text-purple-400">hasAnalysis</span>:{" "}
+                      <span className="text-orange-400">true</span>
+                    </div>
+                  </div>
+                  <div>{"}"}</div>
+                </div>
+                <div>{"}"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
+              DELETE
+            </span>
+            <code className="text-gray-900 font-mono">
+              medicalReportApi.deleteReport(sessionId)
+            </code>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Delete medical report for a session
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Parameters</h4>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div>
+                  <code className="text-blue-600">sessionId</code>{" "}
+                  <span className="text-gray-500">(string, required)</span> -
+                  Session UUID
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Response</h4>
+              <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                <div>{"{"}</div>
+                <div className="ml-4">
+                  <div>
+                    <span className="text-purple-400">success</span>:{" "}
+                    <span className="text-orange-400">true</span>,
+                  </div>
+                  <div>
+                    <span className="text-purple-400">data</span>: {"{"}
+                  </div>
+                  <div className="ml-4">
+                    <div>
+                      <span className="text-purple-400">id</span>:{" "}
+                      <span className="text-green-400">"report_uuid"</span>,
+                    </div>
+                    <div>
+                      <span className="text-purple-400">filename</span>:{" "}
+                      <span className="text-green-400">"blood_test.pdf"</span>
+                    </div>
+                  </div>
+                  <div>{"}"}</div>
+                </div>
+                <div>{"}"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-800 mb-3">
+          🩺 Medical Content Validation
+        </h3>
+        <ul className="space-y-2 text-blue-700">
+          <li>• Only PDFs with medical content are processed</li>
+          <li>• System validates 200+ medical keywords</li>
+          <li>• Non-medical PDFs are rejected with clear error messages</li>
+          <li>
+            • Medical analysis includes risk assessment and recommendations
+          </li>
+          <li>• Offline analysis available when AI services are unavailable</li>
+        </ul>
+      </div>
+    </div>
+  );
+
   const renderChatSessions = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-200">
@@ -534,8 +818,9 @@ export default function DocsPage() {
           Chat Messages API
         </h2>
         <p className="text-gray-700 leading-relaxed">
-          Manage chat messages within sessions. Messages support both user and
-          assistant roles for AI conversations.
+          Manage chat messages within sessions with medical-only AI responses.
+          Messages support both user and assistant roles for AI conversations
+          with contextual medical analysis and offline fallback.
         </p>
       </div>
 
@@ -611,6 +896,102 @@ export default function DocsPage() {
                         "2024-01-01T00:00:00.000Z"
                       </span>
                     </div>
+                  </div>
+                  <div>{"}"}</div>
+                </div>
+                <div>{"}"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">
+              POST
+            </span>
+            <code className="text-gray-900 font-mono">
+              chatMessageApi.getAIResponse(sessionId, message)
+            </code>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Get contextual AI response for medical questions
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Parameters</h4>
+              <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                <div>
+                  <code className="text-blue-600">sessionId</code>{" "}
+                  <span className="text-gray-500">(string, required)</span> -
+                  Session UUID
+                </div>
+                <div>
+                  <code className="text-blue-600">message</code>{" "}
+                  <span className="text-gray-500">(string, required)</span> -
+                  Medical question
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Validation</h4>
+              <ul className="space-y-1 text-gray-700">
+                <li>• Only medical questions are answered</li>
+                <li>• Non-medical questions are redirected</li>
+                <li>• Context from uploaded medical reports is used</li>
+                <li>
+                  • Offline fallback available when AI services are unavailable
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Response</h4>
+              <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                <div>{"{"}</div>
+                <div className="ml-4">
+                  <div>
+                    <span className="text-purple-400">success</span>:{" "}
+                    <span className="text-orange-400">true</span>,
+                  </div>
+                  <div>
+                    <span className="text-purple-400">data</span>: {"{"}
+                  </div>
+                  <div className="ml-4">
+                    <div>
+                      <span className="text-purple-400">assistantMessage</span>:{" "}
+                      {"{"}
+                    </div>
+                    <div className="ml-4">
+                      <div>
+                        <span className="text-purple-400">id</span>:{" "}
+                        <span className="text-green-400">"response_uuid"</span>,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">session_id</span>:{" "}
+                        <span className="text-green-400">"session_uuid"</span>,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">content</span>:{" "}
+                        <span className="text-green-400">
+                          "Based on your medical report..."
+                        </span>
+                        ,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">role</span>:{" "}
+                        <span className="text-green-400">"assistant"</span>,
+                      </div>
+                      <div>
+                        <span className="text-purple-400">created_at</span>:{" "}
+                        <span className="text-green-400">
+                          "2024-01-01T00:00:00.000Z"
+                        </span>
+                      </div>
+                    </div>
+                    <div>{"}"}</div>
                   </div>
                   <div>{"}"}</div>
                 </div>
@@ -1076,6 +1457,8 @@ export default function DocsPage() {
         return renderAuthentication();
       case "api-client":
         return renderApiClient();
+      case "medical-reports":
+        return renderMedicalReports();
       case "chat-sessions":
         return renderChatSessions();
       case "chat-messages":

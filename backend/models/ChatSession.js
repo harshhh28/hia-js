@@ -7,12 +7,13 @@ export class ChatSession {
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 user_id UUID REFERENCES users(id) ON DELETE CASCADE,
                 title TEXT NOT NULL,
+                has_medical_report BOOLEAN DEFAULT FALSE,
+                medical_analysis TEXT,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
         `;
     try {
       await pool.query(query);
-      console.log("Chat sessions table created successfully");
     } catch (error) {
       console.error("Error creating chat sessions table", error);
       throw error;
@@ -80,6 +81,22 @@ export class ChatSession {
       return result.rows[0];
     } catch (error) {
       console.error("Error getting chat session by ID", error);
+      throw error;
+    }
+  }
+
+  static async updateMedicalAnalysis(id, medical_analysis) {
+    const query = `
+      UPDATE chat_sessions 
+      SET medical_analysis = $1, has_medical_report = TRUE 
+      WHERE id = $2 
+      RETURNING *
+    `;
+    try {
+      const result = await pool.query(query, [medical_analysis, id]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating medical analysis", error);
       throw error;
     }
   }

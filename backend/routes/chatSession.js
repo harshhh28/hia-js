@@ -4,7 +4,7 @@ import {
   handleGetAllChatSessions,
   handleGetChatSessionsByUserId,
   handleDeleteChatSession,
-} from "../controllers/chatsession.js";
+} from "../controllers/chatSession.js";
 import { verifyUserToken, verifyAdminToken } from "../middlewares/index.js";
 
 const router = express.Router();

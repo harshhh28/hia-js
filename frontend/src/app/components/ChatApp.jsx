@@ -5,8 +5,12 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { handleLogout } from "../../utils/auth";
 import { chatSessionApi, chatMessageApi } from "../../utils/chatApi";
+import { medicalReportApi } from "../../utils/medicalReportApi";
 import { cn } from "../../utils/cn";
 import Loading from "./Loading";
+import MedicalReportUpload from "./MedicalReportUpload";
+import MedicalAnalysisDisplay from "./MedicalAnalysisDisplay";
+import MedicalReportStatus from "./MedicalReportStatus";
 import {
   MessageCircle,
   Plus,
@@ -20,6 +24,8 @@ import {
   MoreVertical,
   Menu,
   X,
+  FileText,
+  Upload,
 } from "lucide-react";
 
 export default function ChatApp() {
@@ -34,6 +40,8 @@ export default function ChatApp() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [messageLoading, setMessageLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [medicalReport, setMedicalReport] = useState(null);
+  const [showReportUpload, setShowReportUpload] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -55,10 +63,11 @@ export default function ChatApp() {
     }
   }, [session]);
 
-  // Load messages when current session changes
+  // Load messages and medical report when current session changes
   useEffect(() => {
     if (currentSession) {
       loadMessages(currentSession.id);
+      loadMedicalReport(currentSession.id);
     }
   }, [currentSession]);
 
@@ -82,6 +91,30 @@ export default function ChatApp() {
     }
   };
 
+  const loadMedicalReport = async (sessionId) => {
+    try {
+      const result = await medicalReportApi.getReport(sessionId);
+      if (result.success) {
+        setMedicalReport(result.data);
+        setShowReportUpload(false);
+      } else {
+        // If no medical report exists (404), show upload option
+        setMedicalReport(null);
+        setShowReportUpload(true);
+      }
+    } catch (error) {
+      // Handle 404 error gracefully - no medical report exists
+      if (error.response?.status === 404) {
+        setMedicalReport(null);
+        setShowReportUpload(true);
+      } else {
+        console.error("Error loading medical report:", error);
+        setMedicalReport(null);
+        setShowReportUpload(true);
+      }
+    }
+  };
+
   const createNewSession = async () => {
     setLoading(true);
     const result = await chatSessionApi.createSession();
@@ -89,6 +122,8 @@ export default function ChatApp() {
       setSessions([result.data, ...sessions]);
       setCurrentSession(result.data);
       setMessages([]);
+      setMedicalReport(null);
+      setShowReportUpload(true);
     }
     setLoading(false);
   };
@@ -112,6 +147,12 @@ export default function ChatApp() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentSession || messageLoading) return;
 
+    // Require medical report before allowing chat
+    if (!medicalReport) {
+      alert("Please upload a medical report before starting the conversation.");
+      return;
+    }
+
     const userMessage = {
       id: `temp-${Date.now()}`,
       session_id: currentSession.id,
@@ -122,38 +163,55 @@ export default function ChatApp() {
 
     // Add user message immediately
     setMessages([...messages, userMessage]);
+    const messageContent = newMessage;
     setNewMessage("");
     setMessageLoading(true);
 
-    // Send message to backend
-    const result = await chatMessageApi.createMessage(
-      currentSession.id,
-      newMessage,
-      "user"
-    );
-
-    if (result.success) {
-      // Replace temp message with real one
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === userMessage.id ? result.data : msg))
+    try {
+      // Send message to backend
+      const result = await chatMessageApi.createMessage(
+        currentSession.id,
+        messageContent,
+        "user"
       );
 
-      // Simulate AI response (you can integrate with your AI service here)
-      setTimeout(() => {
-        const aiMessage = {
-          id: `ai-${Date.now()}`,
-          session_id: currentSession.id,
-          content:
-            "This is a simulated AI response. You can integrate with your AI service here to provide health insights based on blood reports and other medical data.",
-          role: "assistant",
-          created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-        setMessageLoading(false);
-      }, 1500);
-    } else {
+      if (result.success) {
+        // Replace temp message with real one
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === userMessage.id ? result.data : msg))
+        );
+
+        // Get AI response
+        const aiResult = await chatMessageApi.getAIResponse(
+          currentSession.id,
+          messageContent
+        );
+
+        if (aiResult.success) {
+          // Add the assistant message
+          setMessages((prev) => [...prev, aiResult.data.assistantMessage]);
+        } else {
+          // Fallback response if AI fails
+          const fallbackMessage = {
+            id: `ai-${Date.now()}`,
+            session_id: currentSession.id,
+            content:
+              "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
+            role: "assistant",
+            created_at: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, fallbackMessage]);
+        }
+      } else {
+        // Remove temp message on error
+        setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
+        alert("Failed to send message: " + result.error);
+      }
+    } catch (error) {
       // Remove temp message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
+      alert("Failed to send message. Please try again.");
+    } finally {
       setMessageLoading(false);
     }
   };
@@ -161,8 +219,29 @@ export default function ChatApp() {
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // Don't send if no medical report is uploaded
+      if (!medicalReport) {
+        alert(
+          "Please upload a medical report before starting the conversation."
+        );
+        return;
+      }
       sendMessage();
     }
+  };
+
+  const handleReportUploaded = (report) => {
+    setMedicalReport(report);
+    setShowReportUpload(false);
+    // Reload messages to show the AI analysis message
+    if (currentSession) {
+      loadMessages(currentSession.id);
+    }
+  };
+
+  const handleReportDeleted = () => {
+    setMedicalReport(null);
+    setShowReportUpload(true);
   };
 
   if (!isClient || status === "loading") {
@@ -224,7 +303,9 @@ export default function ChatApp() {
           </div>
           <div className="mt-2 lg:mt-3 text-sm text-slate-300">
             Welcome back,{" "}
-            <span className="font-medium text-white">{session.user.name}</span>
+            <span className="font-medium text-white">
+              {session?.user?.name || "User"}
+            </span>
           </div>
         </div>
 
@@ -289,11 +370,19 @@ export default function ChatApp() {
                       <div className="font-medium text-sm truncate mb-1">
                         {session.title || "New Chat"}
                       </div>
-                      <div className="flex items-center space-x-1 text-xs text-slate-500">
-                        <Clock className="w-3 h-3" />
-                        <span>
-                          {new Date(session.created_at).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1 text-xs text-slate-500">
+                          <Clock className="w-3 h-3" />
+                          <span>
+                            {new Date(session.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {session.has_medical_report && (
+                          <FileText
+                            className="w-3 h-3 text-red-400"
+                            title="Medical report uploaded"
+                          />
+                        )}
                       </div>
                     </div>
                     <button
@@ -334,10 +423,29 @@ export default function ChatApp() {
                     <p className="text-xs lg:text-sm text-slate-400">
                       {messages.length} messages •{" "}
                       {new Date(currentSession.created_at).toLocaleDateString()}
+                      {medicalReport
+                        ? " • Medical Report Uploaded"
+                        : " • Upload Required"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  {showReportUpload && (
+                    <button
+                      onClick={() => setShowReportUpload(!showReportUpload)}
+                      className="p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
+                      title="Upload medical report">
+                      <Upload className="w-4 h-4" />
+                    </button>
+                  )}
+                  {medicalReport && (
+                    <button
+                      onClick={() => setShowReportUpload(!showReportUpload)}
+                      className="p-2 text-red-400 hover:text-red-300 transition-colors rounded-lg hover:bg-red-500/10"
+                      title="Medical report uploaded">
+                      <FileText className="w-4 h-4" />
+                    </button>
+                  )}
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                   <span className="text-xs text-slate-400 hidden sm:block">
                     AI Online
@@ -348,18 +456,39 @@ export default function ChatApp() {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 lg:space-y-6 bg-gradient-to-b from-slate-950/50 to-slate-950">
+              {/* Medical Report Upload */}
+              {showReportUpload && (
+                <div className="max-w-4xl mx-auto">
+                  <MedicalReportUpload
+                    sessionId={currentSession.id}
+                    onReportUploaded={handleReportUploaded}
+                    onReportDeleted={handleReportDeleted}
+                  />
+                </div>
+              )}
+
+              {/* Medical Analysis Display */}
+              {medicalReport && (
+                <div className="max-w-4xl mx-auto">
+                  <MedicalAnalysisDisplay
+                    sessionId={currentSession.id}
+                    hasMedicalReport={!!medicalReport}
+                  />
+                </div>
+              )}
+
               {messages.length === 0 ? (
                 <div className="text-center mt-8 lg:mt-16">
                   <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-4 lg:mb-6 bg-slate-800/50 rounded-3xl flex items-center justify-center">
                     <Bot className="w-8 h-8 lg:w-10 lg:h-10 text-slate-500" />
                   </div>
                   <h3 className="text-lg lg:text-xl font-semibold text-white mb-2 lg:mb-3">
-                    Start a conversation
+                    {medicalReport ? "Start a conversation" : "Upload Required"}
                   </h3>
                   <p className="text-slate-400 max-w-md mx-auto leading-relaxed text-sm lg:text-base px-4">
-                    Ask me about your health, upload blood reports, or get
-                    insights about your medical data. I'm here to help you
-                    understand your health better.
+                    {medicalReport
+                      ? "Ask me questions about your medical report. I'm here to help you understand your health better."
+                      : "Please upload a medical report to start chatting. I need your medical data to provide personalized health insights."}
                   </p>
                 </div>
               ) : (
@@ -459,10 +588,14 @@ export default function ChatApp() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="Ask about your health, upload reports, or get medical insights..."
+                      placeholder={
+                        medicalReport
+                          ? "Ask questions about your medical report..."
+                          : "Upload a medical report first to start chatting..."
+                      }
                       className="w-full resize-none border border-slate-700 rounded-2xl px-3 py-2 lg:px-4 lg:py-3 pr-10 lg:pr-12 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-all duration-300 bg-slate-800/50 text-white placeholder-slate-400 backdrop-blur-sm text-sm lg:text-base"
                       rows={2}
-                      disabled={messageLoading}
+                      disabled={messageLoading || !medicalReport}
                     />
                     <div className="absolute right-3 bottom-2 lg:bottom-3 text-xs text-slate-500 hidden sm:block">
                       Press Enter to send, Shift+Enter for new line
@@ -470,7 +603,9 @@ export default function ChatApp() {
                   </div>
                   <button
                     onClick={sendMessage}
-                    disabled={!newMessage.trim() || messageLoading}
+                    disabled={
+                      !newMessage.trim() || messageLoading || !medicalReport
+                    }
                     className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-slate-700 disabled:to-slate-800 text-white px-4 py-2 lg:px-6 lg:py-3 rounded-2xl font-medium transition-all duration-300 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center transform hover:-translate-y-0.5 disabled:transform-none">
                     {messageLoading ? (
                       <div className="w-4 h-4 lg:w-5 lg:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
