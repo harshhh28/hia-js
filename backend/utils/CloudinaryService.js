@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
 import {} from "dotenv/config";
 
 // Configure Cloudinary
@@ -11,22 +10,32 @@ cloudinary.config({
 
 export class CloudinaryService {
   /**
-   * Upload a PDF file to Cloudinary
-   * @param {string} filePath - Local path to the PDF file
-   * @param {string} folder - Cloudinary folder to store the file
+   * Upload a PDF buffer to Cloudinary
+   * @param {Buffer} buffer - PDF file buffer
+   * @param {string} filename - Original filename
    * @returns {Promise<{url: string, publicId: string, secureUrl: string}>}
    */
-  static async uploadPDF(filePath, folder = "medical-reports") {
+  static async uploadPDF(buffer, filename) {
+    // Get folder from env or use default
+    const folder = process.env.UPLOAD_DIR || "medical-reports";
     try {
-      if (!fs.existsSync(filePath)) {
-        throw new Error(`File not found: ${filePath}`);
+      if (!buffer || buffer.length === 0) {
+        throw new Error("Buffer is empty");
       }
 
-      const result = await cloudinary.uploader.upload(filePath, {
+      // Convert buffer to base64 data URI for Cloudinary upload
+      const base64Data = buffer.toString("base64");
+      const dataUri = `data:application/pdf;base64,${base64Data}`;
+
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const uniqueFilename = `medical-report-${uniqueSuffix}`;
+
+      const result = await cloudinary.uploader.upload(dataUri, {
         resource_type: "raw", // Required for PDF files
-        folder: folder,
-        access_mode: "authenticated", // Private access for medical files
-        type: "private", // Private upload for security
+        folder: folder, // Store in medical-reports folder
+        public_id: uniqueFilename,
+        overwrite: true,
       });
 
       return {
@@ -51,7 +60,6 @@ export class CloudinaryService {
     try {
       const result = await cloudinary.uploader.destroy(publicId, {
         resource_type: "raw",
-        type: "private",
       });
       return result;
     } catch (error) {
@@ -61,26 +69,20 @@ export class CloudinaryService {
   }
 
   /**
-   * Generate a signed URL for private file access
+   * Get the URL for a file
    * @param {string} publicId - Cloudinary public ID
-   * @param {number} expiresIn - URL expiration time in seconds (default: 1 hour)
-   * @returns {string} Signed URL
+   * @returns {string} File URL
    */
-  static getSignedUrl(publicId, expiresIn = 3600) {
+  static getFileUrl(publicId) {
     try {
-      const timestamp = Math.floor(Date.now() / 1000) + expiresIn;
-
-      const signedUrl = cloudinary.url(publicId, {
+      const url = cloudinary.url(publicId, {
         resource_type: "raw",
-        type: "private",
-        sign_url: true,
-        expires_at: timestamp,
+        secure: true,
       });
-
-      return signedUrl;
+      return url;
     } catch (error) {
-      console.error("Cloudinary signed URL error:", error);
-      throw new Error(`Failed to generate signed URL: ${error.message}`);
+      console.error("Cloudinary URL error:", error);
+      throw new Error(`Failed to generate URL: ${error.message}`);
     }
   }
 

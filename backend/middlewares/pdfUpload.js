@@ -1,20 +1,5 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import {} from "dotenv/config";
-
-// Get upload directory from environment variable or use default
-const getUploadDir = () => {
-  const envUploadDir = process.env.UPLOAD_DIR;
-  if (envUploadDir) {
-    // If UPLOAD_DIR is a relative path, resolve it from cwd
-    return path.isAbsolute(envUploadDir)
-      ? envUploadDir
-      : path.join(process.cwd(), envUploadDir);
-  }
-  // Default fallback
-  return path.join(process.cwd(), "uploads", "medical-reports");
-};
 
 // Get max file size from environment variable or use default (10MB)
 const getMaxFileSize = () => {
@@ -26,27 +11,8 @@ const getMaxFileSize = () => {
   return 10 * 1024 * 1024; // 10MB default
 };
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = getUploadDir();
-
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = `medical-report-${uniqueSuffix}${path.extname(
-      file.originalname
-    )}`;
-    cb(null, filename);
-  },
-});
+// Use memory storage instead of disk storage for serverless compatibility
+const storage = multer.memoryStorage();
 
 // File filter to only allow PDF files
 const fileFilter = (req, file, cb) => {
@@ -57,7 +23,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer
+// Configure multer with memory storage
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
@@ -482,20 +448,7 @@ export const validateMedicalReport = (req, res, next) => {
     filename.includes(keyword)
   );
 
-  // Temporarily disable filename validation for testing
-  // TODO: Implement content-based validation instead of filename validation
-  /*
-  if (!hasMedicalContent) {
-    // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
-    return res.status(400).json({
-      success: false,
-      message:
-        "File does not appear to be a medical report. Please upload a valid medical report PDF.",
-    });
-  }
-  */
-
+  // Content-based validation is done in the controller after PDF processing
   next();
 };
 

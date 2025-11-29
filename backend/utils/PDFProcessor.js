@@ -1,29 +1,15 @@
 import pdfParse from "pdf-parse-new";
-import fs from "fs";
-import path from "path";
 
 export class PDFProcessor {
-  // Helper method to verify PDF file before processing
-  static verifyPDFFile(filePath) {
+  // Helper method to verify PDF buffer before processing
+  static verifyPDFBuffer(buffer) {
     try {
-      // Check if file exists
-      if (!fs.existsSync(filePath)) {
-        throw new Error("File does not exist");
-      }
-
-      // Get file stats
-      const stats = fs.statSync(filePath);
-
-      // Check file extension
-      const ext = path.extname(filePath).toLowerCase();
-
-      if (ext !== ".pdf") {
-        throw new Error("File is not a PDF");
+      if (!buffer || buffer.length === 0) {
+        throw new Error("Buffer is empty");
       }
 
       // Read first few bytes to check PDF header
-      const buffer = fs.readFileSync(filePath, { start: 0, end: 10 });
-      const header = buffer.toString("ascii");
+      const header = buffer.slice(0, 10).toString("ascii");
 
       if (!header.startsWith("%PDF-")) {
         throw new Error("File does not appear to be a valid PDF");
@@ -31,17 +17,15 @@ export class PDFProcessor {
 
       return true;
     } catch (error) {
-      console.error("❌ PDF file verification failed:", error.message);
+      console.error("❌ PDF buffer verification failed:", error.message);
       throw error;
     }
   }
 
-  static async extractText(filePath) {
+  static async extractTextFromBuffer(buffer) {
     try {
-      const dataBuffer = fs.readFileSync(filePath);
-
       // Parse PDF with options for better text extraction
-      const data = await pdfParse(dataBuffer, {
+      const data = await pdfParse(buffer, {
         // Options for better text extraction
         max: 0, // Parse all pages
         version: "v1.10.100", // Use specific version
@@ -57,33 +41,6 @@ export class PDFProcessor {
         .replace(/\s+/g, " ")
         .replace(/\n\s*\n/g, "\n")
         .trim();
-
-      // Show some key indicators if this looks like a medical report
-      const textLower = extractedText.toLowerCase();
-      const medicalIndicators = [
-        "patient",
-        "doctor",
-        "hospital",
-        "clinic",
-        "medical",
-        "diagnosis",
-        "treatment",
-        "prescription",
-        "blood",
-        "test",
-        "lab",
-        "report",
-        "symptoms",
-        "condition",
-        "medicine",
-        "dose",
-        "mg",
-        "ml",
-      ];
-
-      const foundIndicators = medicalIndicators.filter((indicator) =>
-        textLower.includes(indicator)
-      );
 
       // Validate that we extracted meaningful content
       if (extractedText.length < 50) {
@@ -257,13 +214,13 @@ export class PDFProcessor {
     };
   }
 
-  static async processMedicalReport(filePath) {
+  static async processMedicalReport(buffer) {
     try {
-      // First verify the PDF file
-      this.verifyPDFFile(filePath);
+      // First verify the PDF buffer
+      this.verifyPDFBuffer(buffer);
 
-      // Extract text from PDF
-      const extractionResult = await this.extractText(filePath);
+      // Extract text from PDF buffer
+      const extractionResult = await this.extractTextFromBuffer(buffer);
 
       // Validate medical content
       const validationResult = await this.validateMedicalContent(
@@ -280,16 +237,6 @@ export class PDFProcessor {
     } catch (error) {
       console.error("Error processing medical report:", error);
       throw error;
-    }
-  }
-
-  static cleanupFile(filePath) {
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    } catch (error) {
-      console.error("Error cleaning up file:", error);
     }
   }
 }

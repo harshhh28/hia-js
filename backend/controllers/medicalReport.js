@@ -8,8 +8,6 @@ import { getMedicalAnalysisPrompt } from "../utils/Prompt.js";
 import { GroqService } from "../utils/GroqService.js";
 import { CloudinaryService } from "../utils/CloudinaryService.js";
 import { isValidUUID } from "../utils/uuidValidation.js";
-import fs from "fs";
-import path from "path";
 
 const groqService = new GroqService();
 const vectorService = new VectorService();
@@ -40,20 +38,20 @@ const handleUploadMedicalReport = async (req, res) => {
       return ApiResponse.error(res, "Unauthorized access to session", 403);
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return ApiResponse.error(res, "Medical report PDF file is required", 400);
     }
 
     Logger.logInfo(`Processing medical report for session ${session_id}`);
 
-    // Process the PDF first to validate it
+    // Process the PDF from buffer to validate it
     let processingResult;
     try {
-      processingResult = await PDFProcessor.processMedicalReport(req.file.path);
+      processingResult = await PDFProcessor.processMedicalReport(
+        req.file.buffer
+      );
     } catch (error) {
       console.error("PDF processing failed:", error.message);
-      // Clean up the file since processing failed
-      PDFProcessor.cleanupFile(req.file.path);
       return ApiResponse.error(
         res,
         `PDF processing failed: ${error.message}`,
@@ -67,8 +65,6 @@ const handleUploadMedicalReport = async (req, res) => {
         "PDF does not contain medical content:",
         processingResult.validation
       );
-      // Clean up the file since it's not medical
-      PDFProcessor.cleanupFile(req.file.path);
       return ApiResponse.error(
         res,
         "The uploaded PDF does not appear to contain medical content. Please upload a valid medical report.",
@@ -79,8 +75,6 @@ const handleUploadMedicalReport = async (req, res) => {
     // Only check for existing report after successful PDF processing
     const existingReport = await MedicalReport.findBySessionId(session_id);
     if (existingReport) {
-      // Clean up the file since we can't use it
-      PDFProcessor.cleanupFile(req.file.path);
       return ApiResponse.error(
         res,
         "Session already has a medical report",
@@ -88,42 +82,41 @@ const handleUploadMedicalReport = async (req, res) => {
       );
     }
 
-    // Upload to Cloudinary if configured
-    let cloudinaryResult = null;
-    if (CloudinaryService.isConfigured()) {
-      try {
-        Logger.logInfo(`Uploading PDF to Cloudinary for session ${session_id}`);
-        cloudinaryResult = await CloudinaryService.uploadPDF(req.file.path);
-        Logger.logInfo(
-          `Cloudinary upload successful: ${cloudinaryResult.publicId}`
-        );
-      } catch (error) {
-        console.error("Cloudinary upload failed:", error.message);
-        PDFProcessor.cleanupFile(req.file.path);
-        return ApiResponse.error(
-          res,
-          `Cloud storage upload failed: ${error.message}`,
-          500
-        );
-      }
+    // Upload to Cloudinary (required for serverless environments)
+    let cloudinaryResult;
+    try {
+      Logger.logInfo(`Uploading PDF to Cloudinary for session ${session_id}`);
+      cloudinaryResult = await CloudinaryService.uploadPDF(
+        req.file.buffer,
+        req.file.originalname
+      );
+      Logger.logInfo(
+        `Cloudinary upload successful: ${cloudinaryResult.publicId}`
+      );
+    } catch (error) {
+      console.error("Cloudinary upload failed:", error.message);
+      return ApiResponse.error(
+        res,
+        `Cloud storage upload failed: ${error.message}`,
+        500
+      );
     }
+
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const filename = `medical-report-${uniqueSuffix}.pdf`;
 
     // Store medical report in database
     const medicalReport = await MedicalReport.create({
       session_id: session_id,
-      filename: req.file.filename,
+      filename: filename,
       original_filename: req.file.originalname,
-      file_path: cloudinaryResult ? cloudinaryResult.secureUrl : req.file.path,
+      file_path: cloudinaryResult.secureUrl,
       extracted_text: processingResult.text,
       file_size: req.file.size,
-      cloudinary_public_id: cloudinaryResult?.publicId || null,
-      cloudinary_url: cloudinaryResult?.secureUrl || null,
+      cloudinary_public_id: cloudinaryResult.publicId,
+      cloudinary_url: cloudinaryResult.secureUrl,
     });
-
-    // Clean up local temp file after successful Cloudinary upload
-    if (cloudinaryResult) {
-      PDFProcessor.cleanupFile(req.file.path);
-    }
 
     Logger.logInfo(`Medical report stored with ID: ${medicalReport.id}`);
 
@@ -137,9 +130,13 @@ const handleUploadMedicalReport = async (req, res) => {
       );
     } catch (error) {
       console.error("Medical analysis generation failed:", error.message);
-      // Clean up the medical report record since analysis failed
+      // Clean up the medical report record and Cloudinary file since analysis failed
       await MedicalReport.deleteBySessionId(session_id);
-      PDFProcessor.cleanupFile(req.file.path);
+      try {
+        await CloudinaryService.deleteFile(cloudinaryResult.publicId);
+      } catch (cleanupError) {
+        console.error("Cloudinary cleanup failed:", cleanupError.message);
+      }
       return ApiResponse.error(
         res,
         `Medical analysis failed: ${error.message}`,
@@ -156,9 +153,13 @@ const handleUploadMedicalReport = async (req, res) => {
       );
     } catch (error) {
       console.error("Embedding storage failed:", error.message);
-      // Clean up the medical report record since embedding storage failed
+      // Clean up the medical report record and Cloudinary file since embedding storage failed
       await MedicalReport.deleteBySessionId(session_id);
-      PDFProcessor.cleanupFile(req.file.path);
+      try {
+        await CloudinaryService.deleteFile(cloudinaryResult.publicId);
+      } catch (cleanupError) {
+        console.error("Cloudinary cleanup failed:", cleanupError.message);
+      }
       return ApiResponse.error(
         res,
         `Failed to store embeddings: ${error.message}`,
@@ -194,12 +195,6 @@ const handleUploadMedicalReport = async (req, res) => {
     );
   } catch (error) {
     Logger.logError(error, "Upload medical report");
-
-    // Clean up uploaded file if processing failed
-    if (req.file && req.file.path) {
-      PDFProcessor.cleanupFile(req.file.path);
-    }
-
     return ApiResponse.serverError(res, "Failed to process medical report");
   }
 };
@@ -284,7 +279,7 @@ const handleDeleteMedicalReport = async (req, res) => {
       );
     }
 
-    // Clean up from Cloudinary if it was uploaded there
+    // Clean up from Cloudinary
     if (medicalReport.cloudinary_public_id) {
       try {
         await CloudinaryService.deleteFile(medicalReport.cloudinary_public_id);
@@ -295,9 +290,6 @@ const handleDeleteMedicalReport = async (req, res) => {
         console.error("Cloudinary delete failed:", error.message);
         // Continue with deletion even if Cloudinary fails
       }
-    } else {
-      // Clean up local file if not using Cloudinary
-      PDFProcessor.cleanupFile(medicalReport.file_path);
     }
 
     // Clean up embeddings
@@ -353,41 +345,20 @@ const handleDownloadMedicalReport = async (req, res) => {
       );
     }
 
-    // If stored in Cloudinary, redirect to signed URL
-    if (medicalReport.cloudinary_public_id) {
-      try {
-        const signedUrl = CloudinaryService.getSignedUrl(
-          medicalReport.cloudinary_public_id,
-          3600 // 1 hour expiry
-        );
-        Logger.logInfo(
-          `Medical report download redirected to Cloudinary for session ${session_id}`
-        );
-        return res.redirect(signedUrl);
-      } catch (error) {
-        console.error("Failed to generate signed URL:", error.message);
-        return ApiResponse.error(res, "Failed to generate download link", 500);
-      }
+    // Redirect to Cloudinary URL
+    if (medicalReport.cloudinary_url) {
+      Logger.logInfo(
+        `Medical report download redirected to Cloudinary for session ${session_id}`
+      );
+      return res.redirect(medicalReport.cloudinary_url);
     }
 
-    // Fallback to local file if not using Cloudinary
-    if (!fs.existsSync(medicalReport.file_path)) {
-      return ApiResponse.error(res, "Medical report file not found", 404);
+    // Fallback to stored file_path URL
+    if (medicalReport.file_path) {
+      return res.redirect(medicalReport.file_path);
     }
 
-    // Set headers for file download
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${medicalReport.original_filename}"`
-    );
-    res.setHeader("Content-Length", medicalReport.file_size);
-
-    // Stream the file
-    const fileStream = fs.createReadStream(medicalReport.file_path);
-    fileStream.pipe(res);
-
-    Logger.logInfo(`Medical report downloaded for session ${session_id}`);
+    return ApiResponse.error(res, "Medical report file not found", 404);
   } catch (error) {
     Logger.logError(error, "Download medical report");
     return ApiResponse.serverError(res, "Failed to download medical report");
@@ -397,17 +368,14 @@ const handleDownloadMedicalReport = async (req, res) => {
 // Test endpoint to verify PDF processing without saving
 const handleTestPDFProcessing = async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return ApiResponse.error(res, "No file uploaded", 400);
     }
 
-    // Process the PDF without saving to database
+    // Process the PDF from buffer without saving to database
     const processingResult = await PDFProcessor.processMedicalReport(
-      req.file.path
+      req.file.buffer
     );
-
-    // Clean up the temporary file
-    PDFProcessor.cleanupFile(req.file.path);
 
     return ApiResponse.success(
       res,
@@ -424,11 +392,6 @@ const handleTestPDFProcessing = async (req, res) => {
     );
   } catch (error) {
     console.error("❌ PDF processing test failed:", error.message);
-
-    // Clean up the temporary file if it exists
-    if (req.file && req.file.path) {
-      PDFProcessor.cleanupFile(req.file.path);
-    }
 
     return ApiResponse.error(
       res,
