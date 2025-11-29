@@ -1,3 +1,8 @@
+import { DOMMatrix } from "@napi-rs/canvas";
+
+// Polyfill DOMMatrix if not present (needed for pdfjs-dist in Node environment)
+global.DOMMatrix = global.DOMMatrix || DOMMatrix;
+
 let PDFParseClass = null;
 
 async function getPdfParseClass() {
