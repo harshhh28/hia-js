@@ -18,6 +18,9 @@ export const metadata = {
   title: "HIA - Health Insights Agent",
   description:
     "AI Agent to analyze blood reports and provide detailed health insights.",
+  icons: {
+    icon: "/hia.ico",
+  },
 };
 
 export default function RootLayout({ children }) {
