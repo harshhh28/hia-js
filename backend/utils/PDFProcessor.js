@@ -1,4 +1,12 @@
-import pdfParse from "pdf-parse-new";
+let PDFParseClass = null;
+
+async function getPdfParseClass() {
+  if (!PDFParseClass) {
+    const module = await import("pdf-parse");
+    PDFParseClass = module.PDFParse;
+  }
+  return PDFParseClass;
+}
 
 export class PDFProcessor {
   // Helper method to verify PDF buffer before processing
@@ -23,18 +31,22 @@ export class PDFProcessor {
   }
 
   static async extractTextFromBuffer(buffer) {
+    let parser = null;
     try {
-      // Parse PDF with options for better text extraction
-      const data = await pdfParse(buffer, {
-        // Options for better text extraction
-        max: 0, // Parse all pages
-        version: "v1.10.100", // Use specific version
-        normalizeWhitespace: false, // Keep original whitespace
-        disableCombineTextItems: false, // Combine text items
-      });
+      // Get pdf-parse class
+      const PDFParse = await getPdfParseClass();
+
+      // Initialize parser with buffer
+      parser = new PDFParse({ data: buffer });
+
+      // Extract text
+      const textResult = await parser.getText();
+
+      // Get document info
+      const infoResult = await parser.getInfo();
 
       // Clean and format the extracted text
-      let extractedText = data.text;
+      let extractedText = textResult.text;
 
       // Remove excessive whitespace but preserve structure
       extractedText = extractedText
@@ -51,13 +63,17 @@ export class PDFProcessor {
 
       return {
         text: extractedText,
-        pages: data.numpages,
-        info: data.info,
+        pages: textResult.total,
+        info: infoResult.info,
       };
     } catch (error) {
       console.error("Error extracting text from PDF:", error);
       console.error("Error details:", error.message);
       throw new Error(`Failed to process PDF: ${error.message}`);
+    } finally {
+      if (parser) {
+        await parser.destroy();
+      }
     }
   }
 
