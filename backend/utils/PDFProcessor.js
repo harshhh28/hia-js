@@ -1,4 +1,6 @@
 import { DOMMatrix } from "@napi-rs/canvas";
+import { createRequire } from "module";
+import { pathToFileURL } from "url";
 
 // Polyfill DOMMatrix if not present (needed for pdfjs-dist in Node environment)
 global.DOMMatrix = global.DOMMatrix || DOMMatrix;
@@ -9,6 +11,21 @@ async function getPdfParseClass() {
   if (!PDFParseClass) {
     const module = await import("pdf-parse");
     PDFParseClass = module.PDFParse;
+
+    // Explicitly configure worker for Node.js environment to avoid resolution errors
+    // especially in Vercel / serverless environments
+    try {
+      const require = createRequire(import.meta.url);
+      // Resolve the worker file from pdfjs-dist
+      const workerPath = require.resolve(
+        "pdfjs-dist/legacy/build/pdf.worker.mjs"
+      );
+      // Convert path to file URL for ESM compatibility
+      PDFParseClass.setWorker(pathToFileURL(workerPath).toString());
+    } catch (e) {
+      console.warn("Warning: Failed to configure PDF worker path:", e.message);
+      // Fallback to default behavior
+    }
   }
   return PDFParseClass;
 }
