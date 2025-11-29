@@ -1,11 +1,35 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import {} from "dotenv/config";
+
+// Get upload directory from environment variable or use default
+const getUploadDir = () => {
+  const envUploadDir = process.env.UPLOAD_DIR;
+  if (envUploadDir) {
+    // If UPLOAD_DIR is a relative path, resolve it from cwd
+    return path.isAbsolute(envUploadDir)
+      ? envUploadDir
+      : path.join(process.cwd(), envUploadDir);
+  }
+  // Default fallback
+  return path.join(process.cwd(), "uploads", "medical-reports");
+};
+
+// Get max file size from environment variable or use default (10MB)
+const getMaxFileSize = () => {
+  const envMaxSize = process.env.MAX_FILE_SIZE;
+  if (envMaxSize) {
+    const parsed = parseInt(envMaxSize, 10);
+    return isNaN(parsed) ? 10 * 1024 * 1024 : parsed;
+  }
+  return 10 * 1024 * 1024; // 10MB default
+};
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), "uploads", "medical-reports");
+    const uploadDir = getUploadDir();
 
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
@@ -38,7 +62,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: getMaxFileSize(),
   },
 });
 
