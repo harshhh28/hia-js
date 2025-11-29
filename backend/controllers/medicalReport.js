@@ -6,6 +6,7 @@ import { PDFProcessor } from "../utils/PDFProcessor.js";
 import { VectorService, Logger } from "../utils/VectorService.js";
 import { getMedicalAnalysisPrompt } from "../utils/Prompt.js";
 import { GroqService } from "../utils/GroqService.js";
+import { CloudinaryService } from "../utils/CloudinaryService.js";
 import { isValidUUID } from "../utils/uuidValidation.js";
 import fs from "fs";
 import path from "path";
@@ -87,15 +88,42 @@ const handleUploadMedicalReport = async (req, res) => {
       );
     }
 
+    // Upload to Cloudinary if configured
+    let cloudinaryResult = null;
+    if (CloudinaryService.isConfigured()) {
+      try {
+        Logger.logInfo(`Uploading PDF to Cloudinary for session ${session_id}`);
+        cloudinaryResult = await CloudinaryService.uploadPDF(req.file.path);
+        Logger.logInfo(
+          `Cloudinary upload successful: ${cloudinaryResult.publicId}`
+        );
+      } catch (error) {
+        console.error("Cloudinary upload failed:", error.message);
+        PDFProcessor.cleanupFile(req.file.path);
+        return ApiResponse.error(
+          res,
+          `Cloud storage upload failed: ${error.message}`,
+          500
+        );
+      }
+    }
+
     // Store medical report in database
     const medicalReport = await MedicalReport.create({
       session_id: session_id,
       filename: req.file.filename,
       original_filename: req.file.originalname,
-      file_path: req.file.path,
+      file_path: cloudinaryResult ? cloudinaryResult.secureUrl : req.file.path,
       extracted_text: processingResult.text,
       file_size: req.file.size,
+      cloudinary_public_id: cloudinaryResult?.publicId || null,
+      cloudinary_url: cloudinaryResult?.secureUrl || null,
     });
+
+    // Clean up local temp file after successful Cloudinary upload
+    if (cloudinaryResult) {
+      PDFProcessor.cleanupFile(req.file.path);
+    }
 
     Logger.logInfo(`Medical report stored with ID: ${medicalReport.id}`);
 
@@ -256,8 +284,21 @@ const handleDeleteMedicalReport = async (req, res) => {
       );
     }
 
-    // Clean up file
-    PDFProcessor.cleanupFile(medicalReport.file_path);
+    // Clean up from Cloudinary if it was uploaded there
+    if (medicalReport.cloudinary_public_id) {
+      try {
+        await CloudinaryService.deleteFile(medicalReport.cloudinary_public_id);
+        Logger.logInfo(
+          `Deleted from Cloudinary: ${medicalReport.cloudinary_public_id}`
+        );
+      } catch (error) {
+        console.error("Cloudinary delete failed:", error.message);
+        // Continue with deletion even if Cloudinary fails
+      }
+    } else {
+      // Clean up local file if not using Cloudinary
+      PDFProcessor.cleanupFile(medicalReport.file_path);
+    }
 
     // Clean up embeddings
     await vectorService.cleanupSessionEmbeddings(session_id);
@@ -312,7 +353,24 @@ const handleDownloadMedicalReport = async (req, res) => {
       );
     }
 
-    // Check if file exists
+    // If stored in Cloudinary, redirect to signed URL
+    if (medicalReport.cloudinary_public_id) {
+      try {
+        const signedUrl = CloudinaryService.getSignedUrl(
+          medicalReport.cloudinary_public_id,
+          3600 // 1 hour expiry
+        );
+        Logger.logInfo(
+          `Medical report download redirected to Cloudinary for session ${session_id}`
+        );
+        return res.redirect(signedUrl);
+      } catch (error) {
+        console.error("Failed to generate signed URL:", error.message);
+        return ApiResponse.error(res, "Failed to generate download link", 500);
+      }
+    }
+
+    // Fallback to local file if not using Cloudinary
     if (!fs.existsSync(medicalReport.file_path)) {
       return ApiResponse.error(res, "Medical report file not found", 404);
     }

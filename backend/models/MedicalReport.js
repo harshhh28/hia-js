@@ -11,12 +11,28 @@ export class MedicalReport {
         file_path TEXT NOT NULL,
         extracted_text TEXT NOT NULL,
         file_size INTEGER NOT NULL,
+        cloudinary_public_id VARCHAR(255),
+        cloudinary_url TEXT,
         uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `;
     try {
       await pool.query(query);
+      // Add cloudinary columns if they don't exist (for existing tables)
+      await pool.query(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'medical_reports' AND column_name = 'cloudinary_public_id') THEN
+            ALTER TABLE medical_reports ADD COLUMN cloudinary_public_id VARCHAR(255);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'medical_reports' AND column_name = 'cloudinary_url') THEN
+            ALTER TABLE medical_reports ADD COLUMN cloudinary_url TEXT;
+          END IF;
+        END $$;
+      `);
     } catch (error) {
       console.error("Error creating medical reports table", error);
       throw error;
@@ -31,14 +47,16 @@ export class MedicalReport {
       file_path,
       extracted_text,
       file_size,
+      cloudinary_public_id = null,
+      cloudinary_url = null,
     } = reportData;
 
     const query = `
       INSERT INTO medical_reports (
         session_id, filename, original_filename, file_path, 
-        extracted_text, file_size
+        extracted_text, file_size, cloudinary_public_id, cloudinary_url
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
     try {
@@ -49,6 +67,8 @@ export class MedicalReport {
         file_path,
         extracted_text,
         file_size,
+        cloudinary_public_id,
+        cloudinary_url,
       ]);
       return result.rows[0];
     } catch (error) {
