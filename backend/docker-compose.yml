@@ -1,16 +1,17 @@
 services:
-  postgres:
-    image: pgvector/pgvector:pg15
-    container_name: hia_postgres
-    environment:
-      POSTGRES_DB: hia_db
-      POSTGRES_USER: hia_user
-      POSTGRES_PASSWORD: hia_password_2025
+  backend:
+    build: .
+    container_name: hia_backend
+    restart: always
     ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - "5000:5000"
+    env_file:
+      - .env
 
-volumes:
-  postgres_data:
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: hia_tunnel
+    restart: always
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
