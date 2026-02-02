@@ -1,33 +1,21 @@
-import { DOMMatrix } from "@napi-rs/canvas";
-import { createRequire } from "module";
-import { pathToFileURL } from "url";
+let pdfParserFn = null;
 
-// Polyfill DOMMatrix if not present (needed for pdfjs-dist in Node environment)
-global.DOMMatrix = global.DOMMatrix || DOMMatrix;
+async function getPdfParser() {
+  if (pdfParserFn) return pdfParserFn;
 
-let PDFParseClass = null;
-
-async function getPdfParseClass() {
-  if (!PDFParseClass) {
-    const module = await import("pdf-parse");
-    PDFParseClass = module.PDFParse;
-
-    // Explicitly configure worker for Node.js environment to avoid resolution errors
-    // especially in Vercel / serverless environments
-    try {
-      const require = createRequire(import.meta.url);
-      // Resolve the worker file from pdfjs-dist
-      const workerPath = require.resolve(
-        "pdfjs-dist/legacy/build/pdf.worker.mjs"
-      );
-      // Convert path to file URL for ESM compatibility
-      PDFParseClass.setWorker(pathToFileURL(workerPath).toString());
-    } catch (e) {
-      console.warn("Warning: Failed to configure PDF worker path:", e.message);
-      // Fallback to default behavior
-    }
+  // Prefer pdf-parse-new (pure JS, maintained fork)
+  try {
+    const mod = await import("pdf-parse-new");
+    pdfParserFn = mod?.default ?? mod;
+    if (typeof pdfParserFn === "function") return pdfParserFn;
+  } catch (_e) {
+    // ignore and fallback
   }
-  return PDFParseClass;
+
+  // Fallback to pdf-parse if present
+  const mod = await import("pdf-parse");
+  pdfParserFn = mod?.default ?? mod;
+  return pdfParserFn;
 }
 
 export class PDFProcessor {
@@ -53,22 +41,16 @@ export class PDFProcessor {
   }
 
   static async extractTextFromBuffer(buffer) {
-    let parser = null;
     try {
-      // Get pdf-parse class
-      const PDFParse = await getPdfParseClass();
+      const parsePdf = await getPdfParser();
+      if (typeof parsePdf !== "function") {
+        throw new Error("PDF parser is not available");
+      }
 
-      // Initialize parser with buffer
-      parser = new PDFParse({ data: buffer });
-
-      // Extract text
-      const textResult = await parser.getText();
-
-      // Get document info
-      const infoResult = await parser.getInfo();
+      const result = await parsePdf(buffer);
 
       // Clean and format the extracted text
-      let extractedText = textResult.text;
+      let extractedText = (result?.text ?? "").toString();
 
       // Remove excessive whitespace but preserve structure
       extractedText = extractedText
@@ -79,27 +61,24 @@ export class PDFProcessor {
       // Validate that we extracted meaningful content
       if (extractedText.length < 50) {
         throw new Error(
-          "PDF appears to be empty or contains insufficient text"
+          "PDF contains insufficient extractable text (it may be a scanned image). Please upload a text-based medical report PDF."
         );
       }
 
       return {
         text: extractedText,
-        pages: textResult.total,
-        info: infoResult.info,
+        pages: result?.numpages ?? result?.numPages ?? null,
+        info: result?.info ?? null,
       };
     } catch (error) {
       console.error("Error extracting text from PDF:", error);
       console.error("Error details:", error.message);
       throw new Error(`Failed to process PDF: ${error.message}`);
-    } finally {
-      if (parser) {
-        await parser.destroy();
-      }
     }
   }
 
   static async validateMedicalContent(text) {
+    // NOTE: Keep this list focused on medical/lab terms to reduce false positives.
     const medicalKeywords = [
       // Blood test terms
       "hemoglobin",
@@ -235,20 +214,35 @@ export class PDFProcessor {
       textLower.includes(keyword.toLowerCase())
     );
 
-    // Require at least 1 medical keyword to be considered a valid medical report (reduced from 3)
-    if (foundKeywords.length < 1) {
-      throw new Error(
-        "Document does not appear to contain sufficient medical content"
+    // Additional heuristics to reduce false positives
+    const hasUnits =
+      /\b(mg\/dl|g\/dl|mmol\/l|iu\/l|iu\/ml|ng\/ml|pg\/ml|cells\/cumm|\/hpf)\b/i.test(
+        text
       );
-    }
+    const hasReferenceRange = /reference\s*range|normal\s*range/i.test(text);
+    const hasPatientContext = /\b(patient|age|sex|gender|mrn|uhid)\b/i.test(text);
+    const hasManyNumbers = (text.match(/\d+(\.\d+)?/g) ?? []).length >= 10;
+
+    const score =
+      foundKeywords.length +
+      (hasUnits ? 2 : 0) +
+      (hasReferenceRange ? 2 : 0) +
+      (hasPatientContext ? 1 : 0) +
+      (hasManyNumbers ? 2 : 0);
+
+    // Pass criteria: enough medical keywords OR strong lab-report structure
+    const isValid = foundKeywords.length >= 2 || score >= 6;
 
     return {
-      isValid: true,
+      isValid,
       foundKeywords: foundKeywords,
       confidence: Math.min(
-        (foundKeywords.length / medicalKeywords.length) * 100,
+        (score / (medicalKeywords.length + 7)) * 100,
         100
       ),
+      reason: isValid
+        ? null
+        : "Document does not appear to be a medical report (not enough lab/medical indicators found).",
     };
   }
 

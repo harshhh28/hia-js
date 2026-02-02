@@ -14,13 +14,23 @@ const getMaxFileSize = () => {
 // Use memory storage instead of disk storage for serverless compatibility
 const storage = multer.memoryStorage();
 
-// File filter to only allow PDF files
+// File filter: allow PDF + common images (handled later)
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype === "application/pdf") {
-    cb(null, true);
-  } else {
-    cb(new Error("Only PDF files are allowed"), false);
-  }
+  const allowed = new Set([
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+  ]);
+
+  if (allowed.has(file.mimetype)) return cb(null, true);
+  return cb(
+    new Error(
+      "Unsupported file type. Allowed: PDF, PNG, JPG/JPEG, WEBP."
+    ),
+    false
+  );
 };
 
 // Configure multer with memory storage
@@ -41,6 +51,22 @@ export const validateMedicalReport = (req, res, next) => {
     return res.status(400).json({
       success: false,
       message: "Medical report PDF file is required",
+    });
+  }
+
+  // Explicitly reject images for now (no OCR pipeline implemented)
+  if (req.file.mimetype?.startsWith("image/")) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Image uploads (PNG/JPG) are not supported yet. Please upload a text-based PDF medical report.",
+    });
+  }
+
+  if (req.file.mimetype !== "application/pdf") {
+    return res.status(400).json({
+      success: false,
+      message: "Only PDF files are allowed for medical reports.",
     });
   }
 
@@ -470,10 +496,13 @@ export const handleUploadError = (error, req, res, next) => {
     }
   }
 
-  if (error.message === "Only PDF files are allowed") {
+  if (
+    error.message === "Only PDF files are allowed" ||
+    error.message?.startsWith("Unsupported file type")
+  ) {
     return res.status(400).json({
       success: false,
-      message: "Only PDF files are allowed for medical reports.",
+      message: error.message,
     });
   }
 

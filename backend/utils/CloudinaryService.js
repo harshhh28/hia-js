@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import {} from "dotenv/config";
+import { Readable } from "stream";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -23,19 +24,26 @@ export class CloudinaryService {
         throw new Error("Buffer is empty");
       }
 
-      // Convert buffer to base64 data URI for Cloudinary upload
-      const base64Data = buffer.toString("base64");
-      const dataUri = `data:application/pdf;base64,${base64Data}`;
-
       // Generate unique filename
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       const uniqueFilename = `medical-report-${uniqueSuffix}`;
 
-      const result = await cloudinary.uploader.upload(dataUri, {
-        resource_type: "raw", // Required for PDF files
-        folder: folder, // Store in medical-reports folder
-        public_id: uniqueFilename,
-        overwrite: true,
+      // Use streaming upload to avoid base64 size overhead and reduce failures
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: "raw", // Required for PDF files
+            folder: folder,
+            public_id: uniqueFilename,
+            overwrite: true,
+          },
+          (error, uploadResult) => {
+            if (error) return reject(error);
+            return resolve(uploadResult);
+          }
+        );
+
+        Readable.from(buffer).pipe(uploadStream);
       });
 
       return {

@@ -60,14 +60,15 @@ const handleUploadMedicalReport = async (req, res) => {
     }
 
     // Validate that the PDF contains medical content
-    if (!processingResult.validation.isValid) {
+    if (!processingResult.validation?.isValid) {
       console.error(
         "PDF does not contain medical content:",
         processingResult.validation
       );
       return ApiResponse.error(
         res,
-        "The uploaded PDF does not appear to contain medical content. Please upload a valid medical report.",
+        processingResult.validation?.reason ||
+          "The uploaded PDF does not appear to contain medical content. Please upload a valid medical report.",
         400
       );
     }
