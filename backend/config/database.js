@@ -27,8 +27,13 @@ function getConnectionConfig() {
     const hostname = url.hostname;
     const ipv4Address = resolveToIPv4(hostname);
     
-    // Replace hostname with IPv4 in connection string
+    // Replace hostname with IPv4 in connection string so pg never sees hostname (avoids IPv6)
     const modifiedUrl = process.env.DATABASE_URL.replace(hostname, ipv4Address);
+    const isIPv4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ipv4Address);
+    // Only warn when we attempted IPv4 resolution (Node 18.4+) but still got hostname
+    if (!isIPv4 && typeof dns.lookupSync === "function") {
+      console.warn("DB host resolved to non-IPv4:", ipv4Address, "- connection may fail if IPv6 is unreachable");
+    }
     
     return {
       connectionString: modifiedUrl,
