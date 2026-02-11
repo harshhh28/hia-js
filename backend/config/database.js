@@ -1,3 +1,6 @@
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
+
 import pkg from "pg";
 import {} from "dotenv/config";
 
