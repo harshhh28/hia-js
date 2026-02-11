@@ -7,11 +7,3 @@ services:
       - "5000:5000"
     env_file:
       - .env
-
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: hia_tunnel
-    restart: always
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
